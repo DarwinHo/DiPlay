@@ -3,6 +3,7 @@ package com.shilapi.xcertplay
 import android.app.AlertDialog
 import android.bluetooth.BluetoothAdapter
 import android.content.Context
+import android.os.Looper
 import com.shilapi.xcertplay.host.R
 import com.shilapi.xcertplay.transport.PioneerBluetooth
 import java.io.IOException
@@ -67,6 +68,8 @@ class PioneerPhonePickerTest {
         ReflectionHelpers.setField(activity, "pendingWireless", true)
         choosePhone(activity)
         ShadowAlertDialog.getLatestAlertDialog().cancel()
+        // Dialog.cancel posts its listener message to the main looper on Android 7.
+        shadowOf(Looper.getMainLooper()).idle()
         assertFalse(ReflectionHelpers.getField<Boolean>(activity, "pendingWireless"))
         assertNull(DiPlayPreferences.phoneAddress(activity))
     }
