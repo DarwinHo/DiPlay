@@ -1,7 +1,13 @@
-name: Camry installation test APK
+name: Camry APK
 
 on:
   workflow_dispatch:
+    inputs:
+      include_carplay_authentication:
+        description: Include experimental runtime identity from verified upstream 0.2.15 APK
+        type: boolean
+        default: false
+        required: true
 
 permissions:
   contents: read
@@ -55,7 +61,15 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Tests, lint and debug checks
         run: ./gradlew :shared:testDebugUnitTest :common:testDebugUnitTest :home:testDebugUnitTest :mobile:lintDebug :home:lintDebug :maphost:lintDebug :mobile:assembleDebug :home:assembleDebug :maphost:assembleDebug --stacktrace
-      - name: Build signed installation test
+      - name: Prepare verified upstream runtime authentication
+        if: ${{ inputs.include_carplay_authentication }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fL --retry 2 -o "$RUNNER_TEMP/DiPlay-official.apk" https://github.com/shihabal3amri/DiPlay/releases/download/v0.2.15/DiPlay-0.2.15.apk
+          python3 scripts/prepare_camry_runtime.py --official-apk "$RUNNER_TEMP/DiPlay-official.apk" --output-directory "$RUNNER_TEMP/camry-runtime"
+          echo "DIPLAY_AUTH_ASSETS_DIR=$RUNNER_TEMP/camry-runtime" >> "$GITHUB_ENV"
+      - name: Build signed Release APK
         run: ./gradlew :mobile:lintRelease :mobile:assembleRelease --stacktrace
       - name: Verify and prepare APK
         shell: bash
@@ -66,24 +80,51 @@ jobs:
           test "$package_name" = com.tencent.mm
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$apk"
           python3 - <<'PY'
+          import os
+          from pathlib import Path
           import zipfile
           with zipfile.ZipFile("mobile/build/outputs/apk/release/mobile-release.apk") as apk:
-              if any(name.startswith("assets/offline-mfi/") for name in apk.namelist()):
+              expected = os.environ.get("DIPLAY_AUTH_ASSETS_DIR")
+              if expected:
+                  for name in ("identity.pk8", "certificate.p7b"):
+                      source = Path(expected) / "offline-mfi" / name
+                      if apk.read("assets/offline-mfi/" + name) != source.read_bytes():
+                          raise SystemExit("Packaged runtime authentication does not match verified upstream")
+              elif any(name.startswith("assets/offline-mfi/") for name in apk.namelist()):
                   raise SystemExit("Installation test must not contain runtime authentication assets")
           PY
           mkdir -p dist
-          cp "$apk" dist/DiPlay-com.tencent.mm-install-test.apk
+          if [ -n "${DIPLAY_AUTH_ASSETS_DIR:-}" ]; then
+            apk_name=DiPlay-com.tencent.mm-full.apk
+            note='Includes experimental upstream runtime authentication; vehicle compatibility remains unverified.'
+            artifact_name=camry-full-apk
+          else
+            apk_name=DiPlay-com.tencent.mm-install-test.apk
+            note='Installation/startup test only; no CarPlay runtime authentication assets.'
+            artifact_name=camry-install-test-apk
+          fi
+          echo "CAMRY_ARTIFACT_NAME=$artifact_name" >> "$GITHUB_ENV"
+          cp "$apk" "dist/$apk_name"
           cd dist
-          sha256sum DiPlay-com.tencent.mm-install-test.apk > SHA256SUMS.txt
-          printf '%s\n' 'Package: com.tencent.mm' 'Signed installation/startup test only.' 'No CarPlay runtime authentication assets are included.' 'Use the same signing key for future updates.' > README.txt
-          printf '%s\n' '### Camry APK verified' 'Package: `com.tencent.mm`.' 'Installation/startup test only; CarPlay runtime authentication is absent.' 'Download **camry-install-test-apk** from Artifacts.' >> "$GITHUB_STEP_SUMMARY"
+          sha256sum "$apk_name" > SHA256SUMS.txt
+          printf '%s\n' 'Package: com.tencent.mm' "$note" 'Use the same signing key for future updates.' > README.txt
+          printf '%s\n' '### Camry APK verified' 'Package: `com.tencent.mm`.' "$note" "Download **$artifact_name** from Artifacts." >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         with:
-          name: camry-install-test-apk
+          name: ${{ env.CAMRY_ARTIFACT_NAME }}
           path: dist/
           if-no-files-found: error
           retention-days: 14
       - name: Remove temporary signing file
         if: always()
         shell: bash
-        run: rm -f -- "$ANDROID_KEYSTORE_PATH"
+        run: |
+          python3 - <<'PY'
+          import os
+          import shutil
+          from pathlib import Path
+          temp = Path(os.environ["RUNNER_TEMP"])
+          (temp / "camry-signing.jks").unlink(missing_ok=True)
+          (temp / "DiPlay-official.apk").unlink(missing_ok=True)
+          shutil.rmtree(temp / "camry-runtime", ignore_errors=True)
+          PY

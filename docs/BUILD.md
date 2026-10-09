@@ -149,7 +149,7 @@ Different signing keys cannot update the same installed application.
 
 ### GitHub Actions: Camry installation test
 
-This fork includes **Camry installation test APK** under Actions. It is manually
+This fork includes **Camry APK** under Actions. It is manually
 started and creates a signed `com.tencent.mm` release APK without CarPlay runtime
 authentication assets. Use it to test installation and startup, not iPhone connection.
 
@@ -170,13 +170,37 @@ On macOS, copy the encoded keystore to the clipboard without printing it:
 base64 -i /absolute/path/to/your-signing.jks | pbcopy
 ```
 
-Enable Actions in your fork if GitHub prompts you. Open **Actions → Camry
-installation test APK → Run workflow** on `main`. Missing signing secrets stop
+Enable Actions in your fork if GitHub prompts you. Open **Actions → Camry APK → Run workflow** on `main`. Missing signing secrets stop
 the run before compilation. After a successful run, download
 **camry-install-test-apk** from **Artifacts** and unzip it. It contains
 `DiPlay-com.tencent.mm-install-test.apk`, its SHA-256 checksum and a short usage note.
 The workflow verifies the final package and APK signature before uploading.
 The signing file is temporary and is not uploaded. Artifacts expire after 14 days.
+
+### GitHub Actions: complete Camry CarPlay build
+
+Use the same four signing secrets and select **Camry APK → Run workflow** on
+`main`. Enable **include_carplay_authentication**. The workflow downloads the
+upstream 0.2.15 APK and requires SHA-256
+`4bf45f16d6b1ab0a61462b831014081f07240f5596c90ca6bf38fb43f9890511` before importing
+its two runtime files into a temporary directory outside the repository.
+The complete release APK must contain byte-identical copies of those files.
+Neither the identity files nor your signing keystore are committed to Git.
+
+After success, download **camry-full-apk** and unzip
+`DiPlay-com.tencent.mm-full.apk`. This includes the same experimental identity
+as upstream, not Apple certification or a guarantee of iPhone/vehicle support.
+As with upstream, anyone receiving the APK can extract the bundled identity.
+
+Update the existing installation with the same signing secrets and package:
+
+```sh
+adb install -r /absolute/path/to/DiPlay-com.tencent.mm-full.apk
+```
+
+Do not uninstall the installation-test app or reset its hotspot configuration.
+This build keeps versionCode 34; an equal version code can replace the existing
+APK with a matching certificate. Changing signing keys prevents in-place updates.
 
 ### Local release with CarPlay runtime authentication
 
