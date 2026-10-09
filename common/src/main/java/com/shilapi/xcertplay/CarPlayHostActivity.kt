@@ -1,6 +1,7 @@
 package com.shilapi.xcertplay
 
 import android.Manifest
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -722,14 +723,24 @@ class CarPlayHostActivity : ComponentActivity() {
 
     private fun requestVpnConsent() {
         if (awaitingVpnConsent) return
-        val consent = CarPlayVpnService.prepare(this)
-        if (consent == null) {
-            vpnReady = true
-            maybeStartCarPlay()
-        } else {
+        try {
+            val consent = CarPlayVpnService.prepare(this)
+            if (consent == null) {
+                vpnReady = true
+                maybeStartCarPlay()
+            } else {
+                vpnReady = false
+                awaitingVpnConsent = true
+                vpnConsent.launch(consent)
+            }
+        } catch (error: ActivityNotFoundException) {
             vpnReady = false
-            awaitingVpnConsent = true
-            vpnConsent.launch(consent)
+            awaitingVpnConsent = false
+            setStatus(getString(R.string.vpn_consent_unavailable))
+        } catch (error: SecurityException) {
+            vpnReady = false
+            awaitingVpnConsent = false
+            setStatus(getString(R.string.vpn_consent_was_denied))
         }
     }
 

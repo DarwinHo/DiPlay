@@ -749,4 +749,5 @@
     <string name="setup_badge_adb">需要網路 ADB</string>
     <string name="setup_done_title">準備就緒</string>
     <string name="setup_done_description">現在連線你的 iPhone。之後可在設定中再次開啟本精靈。</string>
+    <string name="vpn_consent_unavailable">車機缺少 VPN 授權視窗。有線 CarPlay 需要 VPN 權限，仍可開啟設定。</string>
 </resources>

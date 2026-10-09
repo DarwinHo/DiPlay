@@ -394,6 +394,29 @@ class CarPlayHostSettingsTest {
         assertFalse(activity.isFinishing)
     }
 
+    @Test fun missingSystemVpnDialogKeepsSettingsAvailableAndAllowsRetry() {
+        org.robolectric.shadows.ShadowVpnService.setPrepareResult(Intent("test.VPN_CONSENT"))
+        @Suppress("UNCHECKED_CAST")
+        val launcher = mock(androidx.activity.result.ActivityResultLauncher::class.java)
+            as androidx.activity.result.ActivityResultLauncher<Intent>
+        org.mockito.Mockito.doThrow(android.content.ActivityNotFoundException("Missing VPN dialog"))
+            .`when`(launcher).launch(org.mockito.Mockito.any(Intent::class.java), org.mockito.Mockito.isNull())
+        setField("vpnConsent", launcher)
+
+        invoke("requestVpnConsent")
+
+        assertFalse(field("awaitingVpnConsent") as Boolean)
+        assertFalse(field("vpnReady") as Boolean)
+        assertEquals(activity.getString(R.string.vpn_consent_unavailable), field("latestStage"))
+        invoke("openSettingsMenu")
+        assertTrue(field("menuOpen") as Boolean)
+        assertFalse(activity.isFinishing)
+
+        org.robolectric.shadows.ShadowVpnService.setPrepareResult(null)
+        invoke("requestVpnConsent")
+        assertTrue(field("vpnReady") as Boolean)
+    }
+
     @Test fun usbAttachmentClosesSettingsAndRestartsInPlace() {
         org.robolectric.shadows.ShadowVpnService.setPrepareResult(null)
         attachController()

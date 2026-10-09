@@ -689,4 +689,5 @@
     <string name="setup_badge_adb">Requiere ADB por red</string>
     <string name="setup_done_title">Todo listo</string>
     <string name="setup_done_description">Conecta tu iPhone ahora. Puedes volver a abrir esta guía desde Ajustes.</string>
+    <string name="vpn_consent_unavailable">Esta unidad no tiene ventana de autorización VPN. CarPlay por cable requiere permiso VPN; los ajustes siguen disponibles.</string>
 </resources>
