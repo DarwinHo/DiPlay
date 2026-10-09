@@ -692,4 +692,6 @@
     <string name="vpn_consent_unavailable">Esta unidad no tiene ventana de autorización VPN. CarPlay por cable requiere permiso VPN; los ajustes siguen disponibles.</string>
     <string name="settings_pioneer_bluetooth">Bluetooth Pioneer (experimental)</string>
     <string name="settings_pioneer_bluetooth_description">Usa el canal de datos original de iPhone de Pioneer para CarPlay inalámbrico. Solo admite firmware Android 7.1.2 verificado. Se aplica en la próxima conexión; conserva las conexiones SPP existentes.</string>
+    <string name="pioneer_bluetooth_read_failed">No se pudo leer la lista de teléfonos emparejados de Pioneer. Comprueba el servicio Bluetooth original y vuelve a intentarlo.</string>
+    <string name="pioneer_bluetooth_no_paired_phones">No hay teléfonos emparejados en el Bluetooth de Pioneer. Empareja tu iPhone en la pantalla Bluetooth original y vuelve a DiPlay.</string>
 </resources>

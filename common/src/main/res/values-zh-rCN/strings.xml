@@ -752,4 +752,6 @@
     <string name="vpn_consent_unavailable">车机缺少 VPN 授权窗口。有线 CarPlay 需要 VPN 权限，仍可打开设置。</string>
     <string name="settings_pioneer_bluetooth">先锋蓝牙（实验性）</string>
     <string name="settings_pioneer_bluetooth_description">无线 CarPlay 使用先锋原厂 iPhone 数据通道。仅支持已验证的 Android 7.1.2 固件。下次连接生效；已有 SPP 连接会保留。</string>
+    <string name="pioneer_bluetooth_read_failed">无法读取先锋原厂配对手机列表。请确认原厂蓝牙服务可用后重试。</string>
+    <string name="pioneer_bluetooth_no_paired_phones">先锋原厂蓝牙中没有配对手机。请在原厂蓝牙界面配对 iPhone，然后返回 DiPlay。</string>
 </resources>

@@ -48,12 +48,22 @@ JNI only copies bounded, read-only shared memory in the app process; it does not
 private system library. Sends retain heap objects through remote Binder references, with
 a bounded outstanding allocation count; all reachable allocations close with the stream.
 
+When enabled, Connect phone reads the factory Pioneer pairing list through the same
+firmware gate, before consulting any Android Bluetooth state or pairing permissions.
+Choosing a phone saves its address for the existing connection flow. Empty/error results
+are shown explicitly and do not fall back to Android pairing settings. This also applies
+to changing the selected phone; the default-off Android picker is unchanged.
+
 ## Validation boundaries
 
 Unit tests exercise stream byte ordering, packet splitting, overflow, failure propagation,
 cancellation, Binder reply/callback layouts and preserving a busy port. They use fake
 ports/services; they do not establish permission access, real firmware callback semantics,
 iPhone handshake, Wi-Fi handoff, projection, audio, or vehicle boot stability.
+Phone-picker regressions additionally exercise the actual Activity entry point with
+Android Bluetooth off, a fake factory list, selection persistence, empty/error results,
+cancellation and the option-off Android path. The fake reader does not validate access
+to the vendor platform library on a vehicle.
 
 Before enabling on the vehicle, review a successful CI build and use manual app startup
 for the first connection test. This option does not enable system Bluetooth, grant VPN

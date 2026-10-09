@@ -4438,7 +4438,14 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
     private fun openProjection() {
         startActivity(Intent(this, CarPlayHostActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT))
     }
+    private var pioneerPhoneReader: () -> List<com.shilapi.xcertplay.transport.PioneerBluetooth.PairedDevice> =
+        { com.shilapi.xcertplay.transport.PioneerBluetooth.pairedDevices() }
+
     private fun choosePhone() {
+        if (DiPlayPreferences.pioneerBluetooth(this)) {
+            choosePioneerPhone()
+            return
+        }
         if (Build.VERSION.SDK_INT >= 31 && checkSelfPermission(Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
             bluetoothPermission.launch(Manifest.permission.BLUETOOTH_CONNECT); return
         }
@@ -4468,6 +4475,38 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
                 if (start) connect(true)
             }.setNeutralButton(getString(R.string.pair_another)) { _, _ -> openSystem(Intent(Settings.ACTION_BLUETOOTH_SETTINGS)) }
             .setNegativeButton(getString(R.string.cancel)) { _, _ -> pendingWireless = false }.show()
+    }
+
+    private fun choosePioneerPhone() {
+        val devices = try {
+            pioneerPhoneReader().sortedBy { it.name }
+        } catch (error: Exception) {
+            pendingWireless = false
+            appDialogBuilder().setTitle(getString(R.string.choose_your_iphone))
+                .setMessage(getString(R.string.pioneer_bluetooth_read_failed) + "\n" + (error.message ?: ""))
+                .setPositiveButton(getString(R.string.got_it), null).show()
+            return
+        }
+        if (devices.isEmpty()) {
+            pendingWireless = false
+            appDialogBuilder().setTitle(getString(R.string.pair_your_iphone))
+                .setMessage(getString(R.string.pioneer_bluetooth_no_paired_phones))
+                .setPositiveButton(getString(R.string.got_it), null).show()
+            return
+        }
+        appDialogBuilder().setTitle(getString(R.string.choose_your_iphone))
+            .setItems(devices.map { device ->
+                val name = device.name.ifBlank { getString(R.string.paired_device) }
+                if (devices.count { it.name == device.name } > 1) "$name · ${device.address.takeLast(5)}" else name
+            }.toTypedArray()) { _, index ->
+                val device = devices[index]
+                DiPlayPreferences.savePhone(this, device.address, device.name.ifBlank { "iPhone" })
+                val start = pendingWireless; pendingWireless = false
+                render()
+                if (start) connect(true)
+            }
+            .setNegativeButton(getString(R.string.cancel)) { _, _ -> pendingWireless = false }
+            .setOnCancelListener { pendingWireless = false }.show()
     }
 
     private fun wirelessHelp() {

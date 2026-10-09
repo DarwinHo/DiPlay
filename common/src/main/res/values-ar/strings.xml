@@ -692,4 +692,6 @@
     <string name="vpn_consent_unavailable">لا تحتوي هذه الوحدة على نافذة تفويض VPN. يتطلب CarPlay السلكي إذن VPN؛ تظل الإعدادات متاحة.</string>
     <string name="settings_pioneer_bluetooth">بلوتوث Pioneer (تجريبي)</string>
     <string name="settings_pioneer_bluetooth_description">استخدام قناة بيانات iPhone الأصلية من Pioneer لاتصال CarPlay اللاسلكي. يدعم فقط البرامج الثابتة التي تم التحقق منها بنظام Android 7.1.2. يسري عند الاتصال التالي؛ يتم الحفاظ على اتصال SPP الحالي.</string>
+    <string name="pioneer_bluetooth_read_failed">تعذّرت قراءة قائمة الهواتف المقترنة من Pioneer. تأكد من توفر خدمة بلوتوث الأصلية ثم أعد المحاولة.</string>
+    <string name="pioneer_bluetooth_no_paired_phones">لا توجد هواتف مقترنة في بلوتوث Pioneer. اقرن iPhone من شاشة بلوتوث الأصلية ثم عد إلى DiPlay.</string>
 </resources>

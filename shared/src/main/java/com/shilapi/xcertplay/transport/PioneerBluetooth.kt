@@ -30,7 +30,27 @@ object PioneerBluetooth {
 
     internal data class Target(val address: String, val name: String, val handler: Int, val localAddress: String)
 
+    data class PairedDevice(val address: String, val name: String)
+
+    /** Read-only factory pairing list for the phone picker; uses the same firmware gate. */
+    fun pairedDevices(): List<PairedDevice> = readTargets().map { target ->
+        if (!validMac(target.address)) throw IOException("Pioneer paired-device address is unavailable")
+        PairedDevice(target.address, target.name)
+    }
+
     internal fun selectTarget(selectedAddress: String?): Target {
+        val candidates = readTargets()
+        val matching = if (selectedAddress != null) candidates.filter { it.address.equals(selectedAddress, true) }
+            else candidates.filter { it.name.contains("iPhone", true) }
+        val target = matching.singleOrNull()
+            ?: throw IOException("Pioneer Bluetooth needs one paired iPhone; connect only that iPhone and retry")
+        if (target.handler < 0 || !validMac(target.address) || !validMac(target.localAddress)) {
+            throw IOException("Pioneer Bluetooth device identity is unavailable")
+        }
+        return target
+    }
+
+    private fun readTargets(): List<Target> {
         verifyFirmware()
         try {
             val type = Class.forName(ADAPTER_CLASS)
@@ -40,7 +60,7 @@ object PioneerBluetooth {
             val local = type.getMethod("getAddress").invoke(adapter) as? String
             val devices = type.getMethod("getBondedDevices").invoke(adapter) as? List<*>
                 ?: throw IOException("Pioneer Bluetooth paired-device list is unavailable")
-            val candidates = devices.filterNotNull().map { device ->
+            return devices.filterNotNull().map { device ->
                 val cls = device.javaClass
                 Target(
                     cls.getMethod("getAddress").invoke(device) as String,
@@ -49,14 +69,6 @@ object PioneerBluetooth {
                     local ?: "",
                 )
             }
-            val matching = if (selectedAddress != null) candidates.filter { it.address.equals(selectedAddress, true) }
-                else candidates.filter { it.name.contains("iPhone", true) }
-            val target = matching.singleOrNull()
-                ?: throw IOException("Pioneer Bluetooth needs one paired iPhone; connect only that iPhone and retry")
-            if (target.handler < 0 || !validMac(target.address) || !validMac(target.localAddress)) {
-                throw IOException("Pioneer Bluetooth device identity is unavailable")
-            }
-            return target
         } catch (error: IOException) { throw error }
         catch (error: Exception) { throw IOException("Could not read Pioneer Bluetooth device information", error) }
         catch (error: LinkageError) { throw IOException("Pioneer Bluetooth platform classes are unavailable", error) }

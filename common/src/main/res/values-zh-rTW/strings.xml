@@ -752,4 +752,6 @@
     <string name="vpn_consent_unavailable">車機缺少 VPN 授權視窗。有線 CarPlay 需要 VPN 權限，仍可開啟設定。</string>
     <string name="settings_pioneer_bluetooth">先鋒藍牙（實驗性）</string>
     <string name="settings_pioneer_bluetooth_description">無線 CarPlay 使用先鋒原廠 iPhone 資料通道。僅支援已驗證的 Android 7.1.2 韌體。下次連線生效；已有 SPP 連線會保留。</string>
+    <string name="pioneer_bluetooth_read_failed">無法讀取先鋒原廠配對手機清單。請確認原廠藍牙服務可用後重試。</string>
+    <string name="pioneer_bluetooth_no_paired_phones">先鋒原廠藍牙中沒有配對手機。請在原廠藍牙畫面配對 iPhone，然後返回 DiPlay。</string>
 </resources>

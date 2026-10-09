@@ -692,4 +692,6 @@
     <string name="vpn_consent_unavailable">В этой магнитоле нет окна разрешения VPN. Для проводного CarPlay нужно разрешение VPN; настройки остаются доступны.</string>
     <string name="settings_pioneer_bluetooth">Bluetooth Pioneer (экспериментально)</string>
     <string name="settings_pioneer_bluetooth_description">Использовать штатный канал данных iPhone от Pioneer для беспроводного CarPlay. Поддерживается только проверенная прошивка Android 7.1.2. Вступает в силу при следующем подключении; существующее соединение SPP сохраняется.</string>
+    <string name="pioneer_bluetooth_read_failed">Не удалось прочитать список сопряжённых телефонов Pioneer. Проверьте доступность штатной службы Bluetooth и повторите попытку.</string>
+    <string name="pioneer_bluetooth_no_paired_phones">В Bluetooth Pioneer нет сопряжённых телефонов. Выполните сопряжение iPhone в штатном меню Bluetooth и вернитесь в DiPlay.</string>
 </resources>

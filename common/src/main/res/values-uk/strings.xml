@@ -704,4 +704,6 @@
     <string name="vpn_consent_unavailable">У цій магнітолі немає вікна дозволу VPN. Для дротового CarPlay потрібен дозвіл VPN; налаштування залишаються доступними.</string>
     <string name="settings_pioneer_bluetooth">Bluetooth Pioneer (експериментально)</string>
     <string name="settings_pioneer_bluetooth_description">Використовувати штатний канал даних iPhone від Pioneer для бездротового CarPlay. Підтримується лише перевірена прошивка Android 7.1.2. Діє з наступного підключення; наявне з’єднання SPP зберігається.</string>
+    <string name="pioneer_bluetooth_read_failed">Не вдалося прочитати список спарених телефонів Pioneer. Перевірте доступність штатної служби Bluetooth і повторіть спробу.</string>
+    <string name="pioneer_bluetooth_no_paired_phones">У Bluetooth Pioneer немає спарених телефонів. Спарте iPhone у штатному меню Bluetooth і поверніться до DiPlay.</string>
 </resources>
