@@ -400,7 +400,7 @@ class CarPlayHostSettingsTest {
         val launcher = mock(androidx.activity.result.ActivityResultLauncher::class.java)
             as androidx.activity.result.ActivityResultLauncher<Intent>
         org.mockito.Mockito.doThrow(android.content.ActivityNotFoundException("Missing VPN dialog"))
-            .`when`(launcher).launch(org.mockito.Mockito.any(Intent::class.java), org.mockito.Mockito.isNull())
+            .`when`(launcher).launch(org.mockito.Mockito.any(Intent::class.java))
         setField("vpnConsent", launcher)
 
         invoke("requestVpnConsent")
