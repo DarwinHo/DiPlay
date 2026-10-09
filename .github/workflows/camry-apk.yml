@@ -1,0 +1,87 @@
+name: Camry installation test APK
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+      ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/camry-signing.jks
+      GRADLE_OPTS: -Dorg.gradle.daemon=false
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check signing configuration
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import base64
+          import os
+          from pathlib import Path
+          names = ("ANDROID_KEYSTORE_BASE64", "ANDROID_KEYSTORE_PASSWORD",
+                   "ANDROID_KEY_ALIAS", "ANDROID_KEY_PASSWORD")
+          missing = [name for name in names if not os.environ.get(name)]
+          if missing:
+              raise SystemExit("Configure repository Actions secrets: " + ", ".join(missing))
+          try:
+              data = base64.b64decode("".join(os.environ[names[0]].split()), validate=True)
+          except ValueError:
+              raise SystemExit("ANDROID_KEYSTORE_BASE64 is not valid base64") from None
+          if not data:
+              raise SystemExit("Signing keystore is empty")
+          path = Path(os.environ["ANDROID_KEYSTORE_PATH"])
+          path.write_bytes(data)
+          path.chmod(0o600)
+          PY
+      - name: Check public source
+        run: python3 scripts/check_public_tree.py
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools platforms;android-37.0 build-tools;36.0.0 ndk;28.2.13676358
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Tests, lint and debug checks
+        run: ./gradlew :shared:testDebugUnitTest :common:testDebugUnitTest :home:testDebugUnitTest :mobile:lintDebug :home:lintDebug :maphost:lintDebug :mobile:assembleDebug :home:assembleDebug :maphost:assembleDebug --stacktrace
+      - name: Build signed installation test
+        run: ./gradlew :mobile:lintRelease :mobile:assembleRelease --stacktrace
+      - name: Verify and prepare APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk=mobile/build/outputs/apk/release/mobile-release.apk
+          package_name=$("$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer" manifest application-id "$apk")
+          test "$package_name" = com.tencent.mm
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs "$apk"
+          python3 - <<'PY'
+          import zipfile
+          with zipfile.ZipFile("mobile/build/outputs/apk/release/mobile-release.apk") as apk:
+              if any(name.startswith("assets/offline-mfi/") for name in apk.namelist()):
+                  raise SystemExit("Installation test must not contain runtime authentication assets")
+          PY
+          mkdir -p dist
+          cp "$apk" dist/DiPlay-com.tencent.mm-install-test.apk
+          cd dist
+          sha256sum DiPlay-com.tencent.mm-install-test.apk > SHA256SUMS.txt
+          printf '%s\n' 'Package: com.tencent.mm' 'Signed installation/startup test only.' 'No CarPlay runtime authentication assets are included.' 'Use the same signing key for future updates.' > README.txt
+          printf '%s\n' '### Camry APK verified' 'Package: `com.tencent.mm`.' 'Installation/startup test only; CarPlay runtime authentication is absent.' 'Download **camry-install-test-apk** from Artifacts.' >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: camry-install-test-apk
+          path: dist/
+          if-no-files-found: error
+          retention-days: 14
+      - name: Remove temporary signing file
+        if: always()
+        shell: bash
+        run: rm -f -- "$ANDROID_KEYSTORE_PATH"

@@ -14,7 +14,8 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.shihab.diplay"
+        // Camry firmware whitelist identity; Kotlin namespace stays unchanged.
+        applicationId = "com.tencent.mm"
         minSdk = 25
         targetSdk = 37
         versionCode = 34
@@ -39,7 +40,9 @@ android {
 
     buildTypes {
         debug {
-            applicationIdSuffix = ".hudtest"
+            // Preserve the identity required by the existing HUD debug guards.
+            // Use the release variant for the exact Camry whitelist package.
+            applicationId = "com.shihab.diplay.hudtest"
             versionNameSuffix = "-hud-test"
         }
         release {

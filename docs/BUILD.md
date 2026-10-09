@@ -74,7 +74,13 @@ mobile/build/outputs/apk/debug/mobile-debug.apk
 ```
 
 The debug application ID is `com.shihab.diplay.hudtest`.
-The release application ID is `com.shihab.diplay`.
+The release application ID in this fork is `com.tencent.mm` for the Camry
+package whitelist. Debug retains `com.shihab.diplay.hudtest` for the existing
+HUD debug guards; it does not match the Camry whitelist entry.
+
+Provider authorities and task affinities use `${applicationId}` and follow
+the release package automatically. The Kotlin namespace and component class
+names remain `com.shilapi.xcertplay`.
 
 The source APK contains no accessory identity unless you supply runtime authentication assets.
 Standalone CarPlay needs these assets to connect to an iPhone.
@@ -141,6 +147,39 @@ Different signing keys cannot update the same installed application.
 
 ## Build a release APK
 
+### GitHub Actions: Camry installation test
+
+This fork includes **Camry installation test APK** under Actions. It is manually
+started and creates a signed `com.tencent.mm` release APK without CarPlay runtime
+authentication assets. Use it to test installation and startup, not iPhone connection.
+
+Create an Android signing keystore once using Android Studio's **Generate Signed
+Bundle / APK** wizard. Keep a local backup for future updates. In repository
+**Settings → Secrets and variables → Actions**, add these repository secrets:
+
+| Secret | Value |
+| --- | --- |
+| `ANDROID_KEYSTORE_BASE64` | Base64-encoded bytes of your keystore file |
+| `ANDROID_KEYSTORE_PASSWORD` | Keystore password |
+| `ANDROID_KEY_ALIAS` | Signing key alias |
+| `ANDROID_KEY_PASSWORD` | Signing key password |
+
+On macOS, copy the encoded keystore to the clipboard without printing it:
+
+```sh
+base64 -i /absolute/path/to/your-signing.jks | pbcopy
+```
+
+Enable Actions in your fork if GitHub prompts you. Open **Actions → Camry
+installation test APK → Run workflow** on `main`. Missing signing secrets stop
+the run before compilation. After a successful run, download
+**camry-install-test-apk** from **Artifacts** and unzip it. It contains
+`DiPlay-com.tencent.mm-install-test.apk`, its SHA-256 checksum and a short usage note.
+The workflow verifies the final package and APK signature before uploading.
+The signing file is temporary and is not uploaded. Artifacts expire after 14 days.
+
+### Local release with CarPlay runtime authentication
+
 Prepare the runtime assets as described in the car-test procedure.
 Set these environment variables locally:
 
@@ -160,6 +199,20 @@ Run the release checks and build:
 ```
 
 The output is `mobile/build/outputs/apk/release/mobile-release.apk`.
+Before installation, verify the final package with Android SDK tools:
+
+```sh
+apkanalyzer manifest application-id mobile/build/outputs/apk/release/mobile-release.apk
+apksigner verify --verbose mobile/build/outputs/apk/release/mobile-release.apk
+```
+
+The application ID must be exactly `com.tencent.mm`. This only targets the
+package-name whitelist; it does not bypass existing-package signature checks
+or establish vehicle compatibility. Inspect any existing WeChat package before
+uninstalling or replacing it. Build future updates with the same local signing key.
+The in-app update checker still points to upstream releases, whose package and
+signature differ; use locally built releases to update this fork.
+
 The APK contains the runtime identity you supplied.
 Recipients can extract that identity from the APK.
 The APK excludes the Android signing key.
