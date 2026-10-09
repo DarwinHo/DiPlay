@@ -40,9 +40,6 @@ android {
 
     buildTypes {
         debug {
-            // Preserve the identity required by the existing HUD debug guards.
-            // Use the release variant for the exact Camry whitelist package.
-            applicationId = "com.shihab.diplay.hudtest"
             versionNameSuffix = "-hud-test"
         }
         release {
@@ -58,6 +55,14 @@ android {
     }
     buildFeatures {
         compose = true
+    }
+}
+
+androidComponents {
+    // Build types support a suffix, not a full applicationId. Override the
+    // debug variant through the supported variant API to retain HUD guards.
+    onVariants(selector().withBuildType("debug")) { variant ->
+        variant.applicationId.set("com.shihab.diplay.hudtest")
     }
 }
 
