@@ -1354,7 +1354,7 @@ class CarPlayController(
                 }
                 csm = channel
             }
-            debugLog("wireless iAP2 CSM channel opened over RFCOMM")
+            debugLog("wireless iAP2 CSM channel opened over ${if (pioneerTarget != null) "Pioneer SPP" else "RFCOMM"}")
             if (isStaleWirelessRun(generation)) {
                 return
             }

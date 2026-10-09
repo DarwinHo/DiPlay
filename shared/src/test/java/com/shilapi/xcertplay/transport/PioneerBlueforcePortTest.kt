@@ -9,11 +9,14 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import java.io.IOException
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [25], manifest = Config.NONE)
 class PioneerBlueforcePortTest {
     private class Service(var busy: Boolean = false) : Binder() {
+        var onConnect: () -> Unit = {}
         val calls = mutableListOf<Int>()
         var callback: IBinder? = null
         override fun onTransact(code: Int, data: Parcel, reply: Parcel?, flags: Int): Boolean {
@@ -26,6 +29,7 @@ class PioneerBlueforcePortTest {
                 0x85 -> {
                     assertEquals(4, data.readInt()); reply!!.writeInt(0)
                     notify(17) { writeInt(4); writeInt(1) }
+                    onConnect()
                 }
                 0x87 -> { assertEquals(4, data.readInt()); reply!!.writeInt(0) }
                 else -> fail("Unexpected transaction $code")
@@ -70,5 +74,25 @@ class PioneerBlueforcePortTest {
         val stream = PioneerSppDuplexStream(PioneerBlueforcePort(service, 110, { true }, {}))
         assertThrows(IOException::class.java) { stream.connect() }
         assertFalse(service.calls.contains(0x85)); assertFalse(service.calls.contains(0x87))
+    }
+
+    @Test fun closeWaitsForInFlightStartBeforeDisconnecting() {
+        val service = Service()
+        val entered = CountDownLatch(1); val release = CountDownLatch(1)
+        val closeAttempted = CountDownLatch(1); val closed = CountDownLatch(1)
+        service.onConnect = { entered.countDown(); check(release.await(5, TimeUnit.SECONDS)) }
+        val stream = PioneerSppDuplexStream(PioneerBlueforcePort(service, 110, { false }, {}))
+        val connecting = Thread { runCatching { stream.connect() } }
+        val closing = Thread { closeAttempted.countDown(); stream.close(); closed.countDown() }
+        try {
+            connecting.start(); assertTrue(entered.await(5, TimeUnit.SECONDS))
+            closing.start(); assertTrue(closeAttempted.await(5, TimeUnit.SECONDS))
+            assertFalse(closed.await(200, TimeUnit.MILLISECONDS))
+        } finally {
+            release.countDown(); connecting.join(5000); closing.join(5000)
+            stream.close()
+        }
+        assertFalse(connecting.isAlive); assertFalse(closing.isAlive)
+        assertEquals(listOf(0x4e, 1, 0x86, 0x85, 0x87, 2), service.calls)
     }
 }

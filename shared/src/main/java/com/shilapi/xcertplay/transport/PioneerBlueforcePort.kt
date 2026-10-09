@@ -72,10 +72,13 @@ internal class PioneerBlueforcePort(
         // Do not take over a pre-existing SPP link belonging to another application.
         val state = call(0x86, { writeInt(port) }) { readInt() }
         if (state != 0) throw IOException("Pioneer iAP2 port is busy (state=$state); existing connection preserved")
-        synchronized(lock) { result = null }
-        checkCancelled()
-        requestedConnection = true
-        call(0x85, { writeInt(port) }) { Unit }
+        synchronized(lock) {
+            result = null
+            // Serialize the request with close: cancellation must not start a link after cleanup.
+            checkCancelled()
+            requestedConnection = true
+            call(0x85, { writeInt(port) }) { Unit }
+        }
         val started = System.nanoTime()
         synchronized(lock) {
             while (result == null) {
