@@ -64,6 +64,10 @@ internal enum class DefaultConnectionMode(val key: String) {
 
 internal object DiPlayPreferences {
     private fun prefs(context: Context) = context.getSharedPreferences("diplay", Context.MODE_PRIVATE)
+    fun pioneerBluetooth(context: Context) = prefs(context).getBoolean("pioneer_bluetooth", false)
+    fun savePioneerBluetooth(context: Context, enabled: Boolean) {
+        prefs(context).edit().putBoolean("pioneer_bluetooth", enabled).apply()
+    }
     fun phoneAddress(context: Context): String? = prefs(context).getString("phone_address", null)
     fun phoneName(context: Context): String = prefs(context).getString("phone_name", null) ?: "Your iPhone"
     fun savePhone(context: Context, address: String, name: String) {

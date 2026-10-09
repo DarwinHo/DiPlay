@@ -91,6 +91,7 @@ internal enum class SettingsSection {
     DISPLAY_AND_PERFORMANCE,
     EXPERIMENTAL_DISPLAY,
     ADVANCED_MEDIA,
+    PIONEER_BLUETOOTH,
     CAR_BUTTON,
     AUDIO_ROUTING,
     LOCATION,
@@ -124,6 +125,7 @@ internal object SettingsInformationArchitecture {
             SettingsSection.CLUSTER_MAP,
             SettingsSection.EXPERIMENTAL_DISPLAY,
             SettingsSection.ADVANCED_MEDIA,
+            SettingsSection.PIONEER_BLUETOOTH,
         ),
     )
 }
@@ -1619,6 +1621,16 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
                     getString(R.string.carplay_rotation_sharper),
                 ), pictures.indexOf(CarPlayRotation.picture(this)), reconnects = false) {
                     CarPlayRotation.setPicture(this, pictures[it])
+                    markReconnectNeeded()
+                }
+            }
+        }
+        if (com.shilapi.xcertplay.transport.PioneerBluetooth.platformPresent()) {
+            filteredSection(content, SettingsSection.PIONEER_BLUETOOTH,
+                getString(R.string.settings_pioneer_bluetooth), R.drawable.ic_dp_advanced) { card ->
+                toggle(card, getString(R.string.settings_pioneer_bluetooth),
+                    getString(R.string.settings_pioneer_bluetooth_description), DiPlayPreferences.pioneerBluetooth(this)) {
+                    DiPlayPreferences.savePioneerBluetooth(this, it)
                     markReconnectNeeded()
                 }
             }

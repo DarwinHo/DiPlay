@@ -20,3 +20,9 @@ LOCAL_C_INCLUDES := $(LOCAL_PATH)/speexdsp $(LOCAL_PATH)/speexdsp/include
 LOCAL_CFLAGS := -O2 -DFLOATING_POINT -DUSE_KISS_FFT -DEXPORT= -Wno-unused-parameter
 LOCAL_LDLIBS := -lm
 include $(BUILD_SHARED_LIBRARY)
+
+include $(CLEAR_VARS)
+LOCAL_MODULE := pioneer_memory
+LOCAL_SRC_FILES := pioneer_memory.c
+LOCAL_CFLAGS := -Wall -Wextra -Werror
+include $(BUILD_SHARED_LIBRARY)

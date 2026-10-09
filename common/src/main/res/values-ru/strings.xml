@@ -690,4 +690,6 @@
     <string name="setup_done_title">Всё готово</string>
     <string name="setup_done_description">Подключите iPhone сейчас. Этот мастер можно снова открыть в настройках.</string>
     <string name="vpn_consent_unavailable">В этой магнитоле нет окна разрешения VPN. Для проводного CarPlay нужно разрешение VPN; настройки остаются доступны.</string>
+    <string name="settings_pioneer_bluetooth">Bluetooth Pioneer (экспериментально)</string>
+    <string name="settings_pioneer_bluetooth_description">Использовать штатный канал данных iPhone от Pioneer для беспроводного CarPlay. Поддерживается только проверенная прошивка Android 7.1.2. Вступает в силу при следующем подключении; существующее соединение SPP сохраняется.</string>
 </resources>

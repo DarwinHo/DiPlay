@@ -690,4 +690,6 @@
     <string name="setup_done_title">أنت جاهز</string>
     <string name="setup_done_description">اتصل بـ iPhone الآن. يمكنك فتح هذا الدليل مرة أخرى من الإعدادات.</string>
     <string name="vpn_consent_unavailable">لا تحتوي هذه الوحدة على نافذة تفويض VPN. يتطلب CarPlay السلكي إذن VPN؛ تظل الإعدادات متاحة.</string>
+    <string name="settings_pioneer_bluetooth">بلوتوث Pioneer (تجريبي)</string>
+    <string name="settings_pioneer_bluetooth_description">استخدام قناة بيانات iPhone الأصلية من Pioneer لاتصال CarPlay اللاسلكي. يدعم فقط البرامج الثابتة التي تم التحقق منها بنظام Android 7.1.2. يسري عند الاتصال التالي؛ يتم الحفاظ على اتصال SPP الحالي.</string>
 </resources>

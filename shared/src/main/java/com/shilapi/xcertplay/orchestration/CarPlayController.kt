@@ -254,7 +254,7 @@ class CarPlayController(
     }.apply { removeOnCancelPolicy = true }
     @Volatile private var wirelessDiagnostics: WirelessStartupDiagnostics? = null
     @Volatile private var bluetoothSocket: BluetoothSocket? = null
-    @Volatile private var bluetoothStream: BluetoothRfcommDuplexStream? = null
+    @Volatile private var bluetoothStream: com.shilapi.xcertplay.transport.BlockingDuplexByteStream? = null
     @Volatile private var wirelessTunnelChannel: Iap2Session? = null
     @Volatile private var wirelessRuntimeIdentification: Iap2IdentificationConfig? = null
     @Volatile private var wirelessAirPlayEndpoint: Iap2WirelessCarPlayEndpoint? = null
@@ -1211,15 +1211,15 @@ class CarPlayController(
             )
             onStatus(CarPlayStatus.WaitingForPairedIphone)
 
-            val adapter = bluetoothAdapter
-                ?: throw IOException("Bluetooth adapter is unavailable")
-            if (!adapter.isEnabled) throw IOException("Bluetooth is not enabled")
-            val device = selectWirelessBluetoothDevice(adapter)
-            val hostBluetoothMac = accessoryBluetoothMac(adapter)
-            debugLog(
-                "wireless selected Bluetooth target name=${device.name ?: "unknown"} " +
-                    "address=${device.address} localBt=$hostBluetoothMac",
-            )
+            val pioneerTarget = if (config.pioneerBluetoothEnabled) {
+                com.shilapi.xcertplay.transport.PioneerBluetooth.selectTarget(config.wirelessBluetoothDeviceAddress)
+            } else null
+            val adapter = if (pioneerTarget == null) bluetoothAdapter
+                ?: throw IOException("Bluetooth adapter is unavailable") else null
+            if (adapter != null && !adapter.isEnabled) throw IOException("Bluetooth is not enabled")
+            val device = adapter?.let(::selectWirelessBluetoothDevice)
+            val hostBluetoothMac = pioneerTarget?.localAddress ?: accessoryBluetoothMac(requireNotNull(adapter))
+            debugLog("wireless Bluetooth backend=${if (pioneerTarget != null) "Pioneer SPP" else "Android RFCOMM"}")
             val wirelessAirPlayConfig = airPlayConfig.copy(
                 deviceId = deviceIdentifier,
                 btMac = hostBluetoothMac,
@@ -1288,47 +1288,62 @@ class CarPlayController(
             }
 
             onStatus(CarPlayStatus.ConnectingBluetooth)
-            debugLog(
-                "wireless RFCOMM connecting address=${device.address} " +
-                    "uuid=$IAP2_IPHONE_UUID",
-            )
-            val socket = synchronized(wirelessResourceLock) {
-                if (isStaleWirelessRun(generation)) return
-                device.createRfcommSocketToServiceRecord(UUID.fromString(IAP2_IPHONE_UUID))
-                    .also { bluetoothSocket = it }
-            }
-            logBluetoothConnectionSnapshot(device, "before-connect")
-            val bluetoothStarted = System.nanoTime()
-            try {
-                connectBluetoothSocket(socket, device.address)
-                connectionDiagnostic("Bluetooth connect completed elapsedMs=${elapsedMillis(bluetoothStarted)} " +
-                    "socketReportedConnected=${runCatching { socket.isConnected }.getOrNull() ?: "unknown"}")
-            } catch (error: Throwable) {
-                connectionDiagnostic(
-                    "Bluetooth connect failed elapsedMs=${elapsedMillis(bluetoothStarted)} " +
-                        "failureClass=${diagnosticFailureClass(error)}",
+            val stream = if (pioneerTarget != null) {
+                val pioneerStream = com.shilapi.xcertplay.transport.PioneerBluetooth.createStream(
+                    pioneerTarget, { isStaleWirelessRun(generation) }, ::connectionDiagnostic,
                 )
-                logBluetoothConnectionSnapshot(device, "after-failure")
-                throw error
-            }
-            debugLog("wireless RFCOMM connected address=${device.address}")
-            logBluetoothConnectionSnapshot(device, "after-connect")
-            if (isStaleWirelessRun(generation)) {
-                return
-            }
-            val stream = synchronized(wirelessResourceLock) {
-                if (isStaleWirelessRun(generation)) return
-                try {
-                    BluetoothRfcommDuplexStream(socket, ::connectionDiagnostic).also { bluetoothStream = it }
-                } finally {
-                    // The stream owns the connected socket and also closes it if stream getters
-                    // fail. Do not retain a second socket owner in bootstrap teardown.
-                    if (bluetoothSocket === socket) bluetoothSocket = null
+                synchronized(wirelessResourceLock) {
+                    if (isStaleWirelessRun(generation)) { pioneerStream.close(); return }
+                    bluetoothStream = pioneerStream
                 }
+                pioneerStream.connect()
+                if (isStaleWirelessRun(generation)) return
+                pioneerStream
+            } else {
+                val androidDevice = requireNotNull(device)
+                debugLog(
+                    "wireless RFCOMM connecting address=${androidDevice.address} " +
+                        "uuid=$IAP2_IPHONE_UUID",
+                )
+                val socket = synchronized(wirelessResourceLock) {
+                    if (isStaleWirelessRun(generation)) return
+                    androidDevice.createRfcommSocketToServiceRecord(UUID.fromString(IAP2_IPHONE_UUID))
+                        .also { bluetoothSocket = it }
+                }
+                logBluetoothConnectionSnapshot(androidDevice, "before-connect")
+                val bluetoothStarted = System.nanoTime()
+                try {
+                    connectBluetoothSocket(socket, androidDevice.address)
+                    connectionDiagnostic("Bluetooth connect completed elapsedMs=${elapsedMillis(bluetoothStarted)} " +
+                        "socketReportedConnected=${runCatching { socket.isConnected }.getOrNull() ?: "unknown"}")
+                } catch (error: Throwable) {
+                    connectionDiagnostic(
+                        "Bluetooth connect failed elapsedMs=${elapsedMillis(bluetoothStarted)} " +
+                            "failureClass=${diagnosticFailureClass(error)}",
+                    )
+                    logBluetoothConnectionSnapshot(androidDevice, "after-failure")
+                    throw error
+                }
+                debugLog("wireless RFCOMM connected address=${androidDevice.address}")
+                logBluetoothConnectionSnapshot(androidDevice, "after-connect")
+                if (isStaleWirelessRun(generation)) {
+                    return
+                }
+                val stream = synchronized(wirelessResourceLock) {
+                    if (isStaleWirelessRun(generation)) return
+                    try {
+                        BluetoothRfcommDuplexStream(socket, ::connectionDiagnostic).also { bluetoothStream = it }
+                    } finally {
+                        // The stream owns the connected socket and also closes it if stream getters
+                        // fail. Do not retain a second socket owner in bootstrap teardown.
+                        if (bluetoothSocket === socket) bluetoothSocket = null
+                    }
+                }
+                stream
             }
             val channel = Iap2Session.openWireless(
                 stream,
-                traceContext = "wireless-rfcomm",
+                traceContext = if (pioneerTarget != null) "wireless-pioneer-spp" else "wireless-rfcomm",
                 onTrace = ::debugLog,
                 onArtwork = ::onArtworkTransfer,
             )

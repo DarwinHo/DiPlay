@@ -787,4 +787,6 @@
     <string name="setup_done_title">You’re ready</string>
     <string name="setup_done_description">Connect your iPhone now. You can open this guide again from Settings.</string>
     <string name="vpn_consent_unavailable">This head unit has no VPN authorization window. Wired CarPlay needs VPN permission; settings remain available.</string>
+    <string name="settings_pioneer_bluetooth">Pioneer Bluetooth (experimental)</string>
+    <string name="settings_pioneer_bluetooth_description">Use the original Pioneer iPhone data channel for wireless CarPlay. Only verified Android 7.1.2 firmware is supported. Applies at the next connection; an existing SPP connection is preserved.</string>
 </resources>
