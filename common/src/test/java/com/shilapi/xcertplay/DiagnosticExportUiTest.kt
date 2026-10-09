@@ -3,9 +3,11 @@ package com.shilapi.xcertplay
 import android.content.ActivityNotFoundException
 import android.content.pm.PackageManager
 import android.os.Looper
+import android.os.Build
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import android.widget.LinearLayout
 import androidx.activity.result.ActivityResultLauncher
 import androidx.core.app.ActivityOptionsCompat
 import com.shilapi.xcertplay.host.R
@@ -24,40 +26,60 @@ import java.io.File
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [28], qualifiers = "en", shadows = [FileProviderPathTestShadow::class])
 class DiagnosticExportUiTest {
-    @Test fun missingPickerSavesAReportAndProvidesSelectableTextInsideDiPlay() {
+    @Test fun missingPickerSavesAReportAndProvidesSelectableTextInsideDiPlay() = checkExport(false)
+
+    @Test @Config(sdk = [25])
+    fun androidSevenSaveButtonBypassesPickerThatOpensButCannotSave() = checkExport(true)
+
+    private fun checkExport(primaryButton: Boolean) {
         val controller = Robolectric.buildActivity(DiPlayActivity::class.java).setup()
         val activity = controller.get()
         val context = activity.applicationContext
         val authority = "${context.packageName}.diagnostic-reports"
         val info = context.packageManager.resolveContentProvider(authority, PackageManager.GET_META_DATA)!!
         ShadowContentResolver.registerProviderInternal(authority, DiagnosticReportProvider().apply { attachInfo(context, info) })
+        val reports = File(context.getExternalFilesDir(null)!!, "diagnostic-reports")
+        reports.deleteRecursively()
+        var pickerLaunches = 0
         val missingPicker = object : ActivityResultLauncher<String>() {
             override fun launch(input: String, options: ActivityOptionsCompat?) {
-                throw ActivityNotFoundException("No DocumentsUI")
+                pickerLaunches++
+                if (!primaryButton) throw ActivityNotFoundException("No DocumentsUI")
+                // A broken OEM picker opens but never returns a destination.
             }
             override fun unregister() = Unit
             override fun getContract() = androidx.activity.result.contract.ActivityResultContracts.CreateDocument("text/plain")
         }
         ReflectionHelpers.setField(activity, "export", missingPicker)
         try {
-            ReflectionHelpers.callInstanceMethod<Unit>(activity, "chooseReportDestination")
+            if (primaryButton) {
+                ReflectionHelpers.callInstanceMethod<Unit>(activity, "renderSections",
+                    ReflectionHelpers.ClassParameter.from(LinearLayout::class.java, LinearLayout(activity)),
+                    ReflectionHelpers.ClassParameter.from(Set::class.java, setOf(SettingsSection.DIAGNOSTICS)))
+                ReflectionHelpers.getField<View>(activity, "exportButton").performClick()
+                assertEquals(0, pickerLaunches)
+                assertNull(shadowOf(activity).nextStartedActivity)
+            } else {
+                ReflectionHelpers.callInstanceMethod<Unit>(activity, "chooseReportDestination")
+                assertEquals(1, pickerLaunches)
+            }
             val deadline = System.nanoTime() + 5_000_000_000L
             while (ShadowAlertDialog.getLatestAlertDialog() == null && System.nanoTime() < deadline) {
                 Thread.sleep(20)
                 shadowOf(Looper.getMainLooper()).idle()
             }
             val saved = requireNotNull(ShadowAlertDialog.getLatestAlertDialog())
-            val reports = File(context.getExternalFilesDir(null)!!, "diagnostic-reports")
             val file = reports.listFiles()!!.single()
             assertTrue(file.name.endsWith(".txt"))
             assertTrue(descendants(saved.window!!.decorView).filterIsInstance<TextView>()
                 .any { it.text.contains(file.absolutePath) })
-            assertTrue(file.readText().contains("Android 9 / API 28"))
+            val androidVersion = "Android ${Build.VERSION.RELEASE} / API ${Build.VERSION.SDK_INT}"
+            assertTrue(file.readText().contains(androidVersion))
             saved.getButton(android.app.AlertDialog.BUTTON_POSITIVE).performClick()
             shadowOf(Looper.getMainLooper()).idle()
             val viewer = ShadowAlertDialog.getLatestAlertDialog()
             assertTrue(descendants(viewer.window!!.decorView).filterIsInstance<TextView>()
-                .any { it.isTextSelectable && it.text.contains("Android 9 / API 28") })
+                .any { it.isTextSelectable && it.text.contains(androidVersion) })
             viewer.dismiss()
         } finally {
             controller.pause().stop().destroy()

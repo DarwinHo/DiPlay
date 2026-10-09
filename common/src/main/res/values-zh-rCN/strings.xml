@@ -154,7 +154,7 @@
     <string name="choose_iphone">选择 iPhone</string>
     <string name="choose_location">选择位置</string>
     <string name="choose_save_location">选择保存位置</string>
-    <string name="choose_where_to_save_your_report">选择报告的保存位置。如果文件选择器不可用，DiPlay 会在应用内保存报告。\u0020</string>
+    <string name="choose_where_to_save_your_report">自动保存报告，无需选择目录。如需其他位置，可点击“选择保存位置”。\u0020</string>
     <string name="choose_your_iphone">选择 iPhone</string>
     <string name="close">关闭</string>
     <string name="cluster_map_size">仪表盘地图大小</string>

@@ -159,7 +159,7 @@
     <string name="choose_iphone">Вибрати iPhone</string>
     <string name="choose_location">Вибрати місце</string>
     <string name="choose_save_location">Вибрати місце збереження</string>
-    <string name="choose_where_to_save_your_report">Виберіть місце збереження звіту. Якщо засіб вибору файлів недоступний, DiPlay збереже його в застосунку.\u0020</string>
+    <string name="choose_where_to_save_your_report">Збережіть звіт автоматично. Виберіть місце збереження, якщо потрібна інша папка.\u0020</string>
     <string name="choose_your_iphone">Виберіть свій iPhone</string>
     <string name="close">Закрити</string>
     <string name="cluster_map_size">Розмір карти на панелі приладів</string>

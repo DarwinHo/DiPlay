@@ -153,7 +153,7 @@
     <string name="choose_iphone">選擇 iPhone</string>
     <string name="choose_location">選擇位置</string>
     <string name="choose_save_location">選擇儲存位置</string>
-    <string name="choose_where_to_save_your_report">選擇報告的儲存位置。</string>
+    <string name="choose_where_to_save_your_report">自動儲存報告，無需選擇目錄。如需其他位置，可點選「選擇儲存位置」。\u0020</string>
     <string name="choose_your_iphone">選擇 iPhone</string>
     <string name="close">關閉</string>
     <string name="cluster_map_size">儀表板地圖大小</string>
