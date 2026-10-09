@@ -54,10 +54,10 @@ class PioneerBlueforcePortTest {
         val service = Service()
         val stream = PioneerSppDuplexStream(PioneerBlueforcePort(service, 110, { false }, {}))
         stream.connect()
-        service.notify(16) { writeInt(111); writeInt(4); writeInt(4); writeInt(0x04030201) }
-        service.notify(16) { writeInt(110); writeInt(5); writeInt(4); writeInt(0x04030201) }
+        service.notify(16) { writeInt(111); writeInt(4); writeByteArray(byteArrayOf(1, 2, 3, 4)) }
+        service.notify(16) { writeInt(110); writeInt(5); writeByteArray(byteArrayOf(1, 2, 3, 4)) }
         assertNull(stream.recv(20, 0))
-        service.notify(16) { writeInt(110); writeInt(4); writeInt(3); writeInt(0x00030201) }
+        service.notify(16) { writeInt(110); writeInt(4); writeByteArray(byteArrayOf(1, 2, 3)) }
         assertArrayEquals(byteArrayOf(1, 2, 3), stream.recv(20, 0))
         stream.close(); assertEquals(listOf(0x4e, 1, 0x86, 0x85, 0x87, 2), service.calls)
     }
@@ -67,6 +67,39 @@ class PioneerBlueforcePortTest {
         val stream = PioneerSppDuplexStream(PioneerBlueforcePort(service, 110, { false }, {}))
         service.notify(16) { writeInt(110); writeInt(4); writeInt(Int.MAX_VALUE) }
         assertThrows(IOException::class.java) { stream.recv(1, 0) }; stream.close()
+    }
+
+    @Test fun inlinePayloadPreservesBytesPaddingAndFollowingField() {
+        for (size in listOf(0, 1, 2, 3, 4, 5, 4096, 65536)) {
+            val parcel = Parcel.obtain()
+            try {
+                val bytes = ByteArray(size) { (it * 37 + 128).toByte() }
+                parcel.writeInt(110); parcel.writeInt(4)
+                parcel.writeByteArray(bytes); parcel.writeInt(0x12345678)
+                parcel.setDataPosition(8)
+                assertArrayEquals(bytes, PioneerParcel.readRaw(parcel, 65536))
+                assertEquals(0x12345678, parcel.readInt())
+                assertEquals(0, parcel.dataAvail())
+            } finally { parcel.recycle() }
+        }
+    }
+
+    @Test fun malformedInlinePayloadFailsSession() {
+        val malformed: List<Parcel.() -> Unit> = listOf(
+            {}, // missing length
+            { writeInt(-1) },
+            { writeInt(65537) },
+            { writeInt(8); writeInt(0) }, // shorter than declared length
+            { writeByteArray(byteArrayOf(1, 2, 3)); setDataSize(dataSize() - 1) }, // missing padding
+        )
+        for (write in malformed) {
+            val service = Service()
+            val stream = PioneerSppDuplexStream(PioneerBlueforcePort(service, 110, { false }, {}))
+            try {
+                service.notify(16) { writeInt(110); writeInt(4); write() }
+                assertThrows(IOException::class.java) { stream.recv(1, 0) }
+            } finally { stream.close() }
+        }
     }
 
     @Test fun cancelledConnectNeverRequestsAConnection() {

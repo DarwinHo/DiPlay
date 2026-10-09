@@ -39,7 +39,7 @@ internal class PioneerBlueforcePort(
                         if (handler != deviceHandler || spp != port) return true
                         val bytes = if (code == 5) memory.read(data.readStrongBinder()
                             ?: throw IOException("Pioneer SPP received a null memory handle"))
-                        else PioneerParcel.readRaw(data, data.readInt(), 65536)
+                        else PioneerParcel.readRaw(data, 65536)
                         onBytes(bytes)
                     }
                     17 -> {
@@ -145,13 +145,22 @@ internal class PioneerBlueforcePort(
 }
 
 internal object PioneerParcel {
-    fun readRaw(parcel: Parcel, count: Int, limit: Int): ByteArray {
+    fun readRaw(parcel: Parcel, limit: Int): ByteArray {
+        if (parcel.dataAvail() < 4) throw IOException("Missing Pioneer Bluetooth payload length")
+        val lengthPosition = parcel.dataPosition()
+        val count = parcel.readInt()
         if (count !in 0..limit || count > parcel.dataAvail()) throw IOException("Invalid Pioneer Bluetooth payload length")
         val start = parcel.dataPosition()
         val padded = (count + 3) and -4
         if (padded > parcel.dataAvail()) throw IOException("Truncated Pioneer Bluetooth payload")
-        val bytes = parcel.marshall().copyOfRange(start, start + count)
-        parcel.setDataPosition(start + padded)
+        // Android 7 createByteArray reads int32 length + raw bytes with 4-byte padding,
+        // exactly the native callback 16 layout. Validate before it can allocate.
+        // marshall() is not a raw buffer in Robolectric and cannot be sliced by dataPosition.
+        parcel.setDataPosition(lengthPosition)
+        val bytes = parcel.createByteArray() ?: throw IOException("Missing Pioneer Bluetooth payload")
+        if (bytes.size != count || parcel.dataPosition() != start + padded) {
+            throw IOException("Invalid Pioneer Bluetooth payload layout")
+        }
         return bytes
     }
 }
