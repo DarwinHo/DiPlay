@@ -499,7 +499,7 @@ class CarPlayHostSettingsTest {
 
         assertFalse(field("awaitingVpnConsent") as Boolean)
         assertFalse(field("vpnReady") as Boolean)
-        assertEquals(activity.getString(R.string.vpn_consent_unavailable), field("latestStage"))
+        assertEquals(activity.getString(R.string.vpn_authorization_unavailable), field("latestStage"))
         invoke("openSettingsMenu")
         assertTrue(field("menuOpen") as Boolean)
         assertFalse(activity.isFinishing)

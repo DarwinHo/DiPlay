@@ -696,7 +696,6 @@
     <string name="setup_badge_adb">Requiere ADB por red</string>
     <string name="setup_done_title">Todo listo</string>
     <string name="setup_done_description">Conecta tu iPhone ahora. Puedes volver a abrir esta guía desde Ajustes.</string>
-    <string name="vpn_consent_unavailable">Esta unidad no tiene ventana de autorización VPN. CarPlay por cable requiere permiso VPN; los ajustes siguen disponibles.</string>
     <string name="settings_pioneer_bluetooth">Bluetooth Pioneer (experimental)</string>
     <string name="settings_pioneer_bluetooth_description">Usa el canal de datos original de iPhone de Pioneer para CarPlay inalámbrico. Solo admite firmware Android 7.1.2 verificado. Se aplica en la próxima conexión; conserva las conexiones SPP existentes.</string>
     <string name="pioneer_bluetooth_read_failed">No se pudo leer la lista de teléfonos emparejados de Pioneer. Comprueba el servicio Bluetooth original y vuelve a intentarlo.</string>
