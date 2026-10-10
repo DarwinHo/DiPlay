@@ -257,3 +257,11 @@ The retired `build-beta.py` helper is no longer part of the build procedure.
 | Source APK cannot start standalone CarPlay | Supply runtime authentication assets. Use `:mobile:assembleStandaloneDebug`. |
 | Standalone task reports missing authentication files | Check the external directory path and both required files. |
 | Android rejects an app update | Use the same application ID and signing key as the installed app. |
+
+### Camry update channel
+
+The `com.tencent.mm` Camry build checks `DarwinHo/DiPlay` releases and only offers
+`DiPlay-com.tencent.mm-full.apk` with `SHA256SUMS.txt`. It never offers the upstream
+APK or installation-only test APK. Foreground and background checks use the same
+channel; cached upstream download metadata is discarded. Until a custom release
+is published, obtain the verified custom APK from the Camry APK workflow artifacts.

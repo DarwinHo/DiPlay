@@ -34,6 +34,15 @@ class DiagnosticExportUiTest {
     private fun checkExport(primaryButton: Boolean) {
         val controller = Robolectric.buildActivity(DiPlayActivity::class.java).setup()
         val activity = controller.get()
+        // Exercise the OEM picker failure path when storage permission is unavailable.
+        // The upstream button first asks permission; a missing permission UI must still save.
+        ReflectionHelpers.setField(activity, "reportStoragePermission", object : ActivityResultLauncher<String>() {
+            override fun launch(input: String, options: ActivityOptionsCompat?) {
+                throw ActivityNotFoundException("No permission UI")
+            }
+            override fun unregister() = Unit
+            override fun getContract() = androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+        })
         val context = activity.applicationContext
         val authority = "${context.packageName}.diagnostic-reports"
         val info = context.packageManager.resolveContentProvider(authority, PackageManager.GET_META_DATA)!!

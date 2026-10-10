@@ -61,6 +61,20 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Tests, lint and debug checks
         run: ./gradlew :shared:testDebugUnitTest :common:testDebugUnitTest :home:testDebugUnitTest :mobile:lintDebug :home:lintDebug :maphost:lintDebug :mobile:assembleDebug :home:assembleDebug :maphost:assembleDebug --stacktrace
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: camry-check-reports
+          path: |
+            shared/build/reports/tests/
+            common/build/reports/tests/
+            common/build/reports/album-artwork-ui/
+            mobile/build/reports/lint-results-debug.html
+            samples/home/build/reports/tests/
+            samples/home/build/reports/lint-results-debug.html
+            samples/maphost/build/reports/lint-results-debug.html
+          if-no-files-found: warn
+          retention-days: 14
       - name: Prepare verified upstream runtime authentication
         if: ${{ inputs.include_carplay_authentication }}
         shell: bash
