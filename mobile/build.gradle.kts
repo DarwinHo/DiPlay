@@ -18,8 +18,8 @@ android {
         applicationId = "com.tencent.mm"
         minSdk = 25
         targetSdk = 37
-        versionCode = 34
-        versionName = "0.2.15"
+        versionCode = 35
+        versionName = "0.2.16"
 
     }
 
