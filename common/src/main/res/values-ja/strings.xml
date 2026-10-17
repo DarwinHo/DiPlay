@@ -970,4 +970,6 @@
     <string name="settings_pioneer_bluetooth_description">ワイヤレスCarPlayでパイオニア純正のiPhoneデータチャネルを使用します。検証済みのAndroid 7.1.2ファームウェアのみ対応しています。次回の接続時に適用されます。既存のSPP接続は維持されます。</string>
     <string name="pioneer_bluetooth_read_failed">パイオニア純正のペアリング済みスマートフォン一覧を読み込めませんでした。純正Bluetoothサービスが利用可能であることを確認してから再試行してください。</string>
     <string name="pioneer_bluetooth_no_paired_phones">パイオニア純正Bluetoothにペアリング済みのスマートフォンが見つかりませんでした。純正Bluetooth画面でiPhoneをペアリングしてから、DiPlayに戻ってください。</string>
+    <string name="settings_open_file_manager">車載ファイルマネージャーを開く</string>
+    <string name="settings_open_file_manager_description">車載端末内蔵のファイルマネージャーを開き、USBメモリの閲覧やアプリのインストールを行います。</string>
 </resources>

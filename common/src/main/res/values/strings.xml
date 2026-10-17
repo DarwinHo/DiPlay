@@ -971,4 +971,6 @@
     <string name="settings_write_settings_allow">Allow access</string>
     <string name="settings_wifi_direct_scan_pause">Pause the car\'s Wi-Fi search during CarPlay · needs ADB</string>
     <string name="settings_wifi_direct_scan_pause_description">Over Wi-Fi Direct the car searches for Wi-Fi networks every few seconds, and each search makes music and video stutter. With this on, DiPlay pauses the search while CarPlay runs. The car then also does not join a known network, such as your phone\'s hotspot, by itself until CarPlay ends; you can still join one in the car\'s Wi-Fi settings. Turn it off to let the car join automatically. Applies at the next connection.</string>
+    <string name="settings_open_file_manager">Open car file manager</string>
+    <string name="settings_open_file_manager_description">Open the head unit\'s built-in file manager to browse USB drives and install apps.</string>
 </resources>

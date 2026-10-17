@@ -8,6 +8,8 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import android.widget.LinearLayout
+import android.widget.Button
+import android.content.Intent
 import androidx.activity.result.ActivityResultLauncher
 import androidx.core.app.ActivityOptionsCompat
 import com.shilapi.xcertplay.host.R
@@ -90,6 +92,28 @@ class DiagnosticExportUiTest {
             assertTrue(descendants(viewer.window!!.decorView).filterIsInstance<TextView>()
                 .any { it.isTextSelectable && it.text.contains(androidVersion) })
             viewer.dismiss()
+        } finally {
+            controller.pause().stop().destroy()
+        }
+    }
+
+    @Test fun openFileManagerLaunchesDocumentsUiFilesActivity() {
+        val controller = Robolectric.buildActivity(DiPlayActivity::class.java).setup()
+        val activity = controller.get()
+        try {
+            val content = LinearLayout(activity)
+            ReflectionHelpers.callInstanceMethod<Unit>(activity, "renderSections",
+                ReflectionHelpers.ClassParameter.from(LinearLayout::class.java, content),
+                ReflectionHelpers.ClassParameter.from(Set::class.java, setOf(SettingsSection.DIAGNOSTICS)))
+            val button = descendants(content).filterIsInstance<Button>()
+                .single { it.text == activity.getString(R.string.settings_open_file_manager) }
+            button.performClick()
+            val intent = shadowOf(activity).nextStartedActivity
+            assertNotNull(intent)
+            assertEquals("com.android.documentsui", intent.component?.packageName)
+            assertEquals("com.android.documentsui.FilesActivity", intent.component?.className)
+            assertEquals(Intent.ACTION_MAIN, intent.action)
+            assertTrue((intent.flags and Intent.FLAG_ACTIVITY_NEW_TASK) != 0)
         } finally {
             controller.pause().stop().destroy()
         }

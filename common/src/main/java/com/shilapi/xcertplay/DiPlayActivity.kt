@@ -9,6 +9,7 @@ import android.app.TimePickerDialog
 import android.view.Window
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -1748,6 +1749,8 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
             card.addView(button(getString(R.string.settings_report_on_phone), false) { openBackup(SettingsCategory.DIAGNOSTICS) }, matchButton(10, 60))
             val destination = getString(R.string.reports_save_to_downloads_diplay)
             card.addView(label(destination + getString(R.string.nothing_is_sent_automatically_protocol_payloads_and_creden), 14, MUTED).apply { setPadding(0, dp(12), 0, 0) })
+            card.addView(button(getString(R.string.settings_open_file_manager), false) { openFileManager() }, matchButton(10, 60))
+            card.addView(label(getString(R.string.settings_open_file_manager_description), 14, MUTED).apply { setPadding(0, dp(8), 0, 0) })
             toggle(card, getString(R.string.settings_fps_counter), getString(R.string.settings_fps_counter_description),
                 AirPlayPersistence.loadFpsCounter(this)) { AirPlayPersistence.saveFpsCounter(this, it) }
         }
@@ -5501,6 +5504,27 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
         // the result callback and the background writer's exception handler ever run.
         if (exportInProgress) return
         runCatching { export.launch(reportFileName()) }.onFailure { exportDiagnostics() }
+    }
+
+    private fun openFileManager() {
+        val intent = Intent(Intent.ACTION_MAIN).apply {
+            component = ComponentName("com.android.documentsui", "com.android.documentsui.FilesActivity")
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        try {
+            startActivity(intent)
+        } catch (e: Exception) {
+            val fallback = packageManager.getLaunchIntentForPackage("com.android.documentsui")
+                ?: Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                    addCategory(Intent.CATEGORY_OPENABLE)
+                    type = "*/*"
+                }
+            try {
+                startActivity(fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            } catch (fallbackError: Exception) {
+                Log.w("DiPlay", "Unable to open car file manager", fallbackError)
+            }
+        }
     }
 
     private fun exportDiagnostics(uri: Uri? = null) {
