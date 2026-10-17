@@ -142,6 +142,7 @@ internal object CarPlayMediaKeys {
                 if (nowPlaying.elapsedMillis != update.elapsedMillis) elapsedUpdatedAt = SystemClock.elapsedRealtime()
                 val metadataChanged = metadataChanged(nowPlaying, update) || artwork !== previousArtwork
                 nowPlaying = update
+                if (metadataChanged) ClusterMusicState.publish(update, update.artworkTransferId?.let { artworkCache[it] })
                 updateInitialAlbumRecovery(expected)
                 // The iPhone repeats NowPlayingUpdate about twice a second for the position alone.
                 // Republishing the metadata each time sent a copy of the artwork through system_server
@@ -174,6 +175,7 @@ internal object CarPlayMediaKeys {
         while (artworkCache.size > MAX_CACHED_ARTWORK) artworkCache.remove(artworkCache.keys.first())
         if (nowPlaying.artworkTransferId == id) {
             artwork = decoded
+            ClusterMusicState.publish(nowPlaying, artwork)
             controller?.let { com.shilapi.xcertplay.media.AmbientMusicController.albumColorChanged(it, result?.color) }
             controller?.let(::updateInitialAlbumRecovery)
             session?.setMetadata(androidMetadata(nowPlaying, shownArtworkLocked()))
@@ -305,6 +307,7 @@ internal object CarPlayMediaKeys {
             isActive = true
         }
         Log.i(TAG, "media keys active focusDisabled=$focusDisabled focusGranted=$granted")
+        WheelKeyLog.note("media keys active focusDisabled=$focusDisabled focusGranted=$granted")
     }
 
     private fun forwardGrantedFocusLocked() {
@@ -332,6 +335,7 @@ internal object CarPlayMediaKeys {
         }
         if (!current) return
         Log.i(TAG, "audio focus change=$change")
+        WheelKeyLog.note("media keys audio focus change=$change")
         // Resolve the matching sink and invoke it outside the media-key monitor. An abandoned
         // request must never mute a newer controller, and these owners must not nest locks.
         val background = CarPlayBackgroundSession.snapshot()
@@ -356,6 +360,7 @@ internal object CarPlayMediaKeys {
         nowPlaying = CarPlayNowPlaying()
         artwork = null
         artworkCache.clear()
+        ClusterMusicState.publish(CarPlayNowPlaying(), null)
         focusRequest?.let { request -> appContext?.getSystemService(AudioManager::class.java)?.let(request::abandon) }
         focusRequest = null
         focusHeld = false
@@ -387,10 +392,12 @@ internal object CarPlayMediaKeys {
         // make the iPhone end the video session.
         if (CarPlayVideo.onMediaKey(index)) {
             Log.i(TAG, "media key $source -> car video player $index")
+            WheelKeyLog.note("media key $source -> car video player $index")
             return
         }
         val sent = synchronized(this) { controller }?.sendMediaButton(index) ?: false
         Log.i(TAG, "media key $source -> CarPlay $index sent=$sent")
+        WheelKeyLog.note("media key $source -> CarPlay $index sent=$sent")
     }
 
     /** A steering-wheel media key captured outside the Android key stream (Geely/Lynk). */

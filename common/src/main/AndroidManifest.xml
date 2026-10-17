@@ -38,6 +38,10 @@
     <application>
         <uses-library android:name="jp.pioneer.ceam.platform_library" android:required="false" />
         <provider
+            android:name="com.shilapi.xcertplay.CrashRecordInstaller"
+            android:authorities="${applicationId}.crash-record"
+            android:exported="false" />
+        <provider
             android:name="com.shilapi.xcertplay.DiagnosticReportProvider"
             android:authorities="${applicationId}.diagnostic-reports"
             android:exported="false"

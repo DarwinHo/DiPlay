@@ -62,6 +62,7 @@ import com.shilapi.xcertplay.network.WirelessStartupFailure
 import com.shilapi.xcertplay.network.WirelessStartupDiagnostics
 import com.shilapi.xcertplay.transport.BlockingDuplexByteStream
 import com.shilapi.xcertplay.transport.BluetoothLinkCheck
+import com.shilapi.xcertplay.transport.BluetoothRadioCheck
 import com.shilapi.xcertplay.transport.BluetoothRfcommDuplexStream
 import com.shilapi.xcertplay.transport.Ch341DeviceMatcher
 import com.shilapi.xcertplay.transport.Ch341I2cTransport
@@ -83,6 +84,7 @@ import com.shilapi.xcertplay.transport.forWirelessLink
 import com.shilapi.xcertplay.transport.I2cTransport
 import com.shilapi.xcertplay.transport.I2cTransportException
 import com.shilapi.xcertplay.transport.IphoneCarPlayConfiguration
+import com.shilapi.xcertplay.transport.IphoneUsbAdbGrant
 import com.shilapi.xcertplay.transport.IphoneUsbException
 import com.shilapi.xcertplay.transport.IphoneUsbHost
 import com.shilapi.xcertplay.transport.IphoneUsbMatcher
@@ -186,6 +188,7 @@ class CarPlayController(
     private val usbManager: UsbManager? = context.getSystemService(UsbManager::class.java)
     private val bluetoothAdapter =
         appContext.getSystemService(BluetoothManager::class.java)?.adapter
+            ?: BluetoothAdapter.getDefaultAdapter()
     private val iphoneHost by lazy {
         IphoneUsbHost(
             appContext,
@@ -211,6 +214,9 @@ class CarPlayController(
     private val availabilityPollGeneration = AtomicInteger(0)
     private var permissionPollGeneration = 0
     private var reenumerationAttempts = 0
+    @Volatile private var wiredDeviceName: String? = null
+    private val usbAdbGrantAttempts = mutableSetOf<String>()
+    private val pendingUsbAdbGrants = mutableSetOf<String>()
     private var lastReportedStatus: CarPlayStatus? = null
     private var mfiResetLogged = false
 
@@ -291,6 +297,7 @@ class CarPlayController(
     private var permissionCloseable: Closeable? = null
     private var attachCloseable: Closeable? = null
     private var ch341PermissionCloseable: Closeable? = null
+    private var lastCh341Listing: String? = null
     private var vpnLatch = CountDownLatch(1)
     private val teardownComplete = CountDownLatch(1)
 
@@ -324,7 +331,8 @@ class CarPlayController(
             if (!config.pioneerBluetoothEnabled && btPrefs.getBoolean("bt_suspend_during_carplay", false)) {
                 // close() marks [closed], and a closing session marks itself before onSessionEnded
                 // clears it, ahead of each resume; the pause checks all three under resume's lock.
-                BydBluetoothSuspend.suspend(appContext, this@CarPlayController, btSuspendDelayMs(btPrefs)) {
+                BydBluetoothSuspend.suspend(appContext, this@CarPlayController, btSuspendDelayMs(btPrefs),
+                    log = { debugLog(it) }) {
                     !closed && activeSession === session && !session.isClosed
                 }
             }
@@ -341,7 +349,7 @@ class CarPlayController(
                 activeSession = null
                 synchronized(albumReplayLock) { initialArtworkReplay = null }
                 BydNavigationOutputs.endNow(preserveTurnOverlay = !closed && config.transport == CarPlayTransport.WIRELESS)
-                BydBluetoothSuspend.resume(appContext, this@CarPlayController)
+                BydBluetoothSuspend.resume(appContext, this@CarPlayController) { debugLog(it) }
                 com.shilapi.xcertplay.glance.CarPlayGlance.setConnected(false)
                 videoListener?.onVideoSessionEnded()
                 synchronized(playbackStatus) {
@@ -625,7 +633,7 @@ class CarPlayController(
             dashboardMapOutputVisible = false
         }
         firstTcpWatchdog?.terminate()
-        BydBluetoothSuspend.resume(appContext, this)
+        BydBluetoothSuspend.resume(appContext, this) { debugLog(it) }
         startupTimer.shutdownNow()
         (hotspot as? ManualHotspotManager)?.close()
         val teardownStarted = System.nanoTime()
@@ -906,11 +914,23 @@ class CarPlayController(
         if (closed || phase != Phase.MFI) return
         val device = host.discover().firstOrNull()
         if (device == null) {
+            reportCh341Missing(host)
             waitForMfi()
         } else {
+            debugLog("mfi CH341 listed ${Ch341UsbHost.describe(device)}")
             availabilityPollGeneration.incrementAndGet()
             requestCh341Permission(device)
         }
+    }
+
+    // "MFi coprocessor not present" said only that no configured CH341 was listed. What Android does list shows
+    // whether the adapter left the bus or came back under another identity after a session (#792). Each poll
+    // reports only a change.
+    private fun reportCh341Missing(host: Ch341UsbHost) {
+        val listed = runCatching { host.listedDevices().joinToString(", ") }.getOrElse { "unavailable" }
+        if (listed == lastCh341Listing) return
+        lastCh341Listing = listed
+        debugLog("mfi CH341 not listed by Android; USB devices=[$listed]")
     }
 
     private fun openLinuxMfi() {
@@ -1226,6 +1246,12 @@ class CarPlayController(
             firstTcpWatchdog = watchdog
             val mfi = mfiSession?.client
                 ?: throw IOException("MFi coprocessor client is unavailable")
+            // Wireless CarPlay begins over Bluetooth: a radio that is off is found before the Wi-Fi is changed.
+            BluetoothRadioCheck.blocker(
+                adapterPresent = bluetoothAdapter != null,
+                enabled = bluetoothAdapter?.isEnabled == true,
+                pausedByDiPlay = BydBluetoothSuspend.isSuspendedByUs(appContext),
+            )?.let { throw BluetoothRadioCheck.failure(it) }
             val hotspotInfo = startWirelessHotspot(generation)
             if (isStaleWirelessRun(generation)) {
                 return
@@ -1307,15 +1333,25 @@ class CarPlayController(
             val pioneerTarget = if (config.pioneerBluetoothEnabled) {
                 com.shilapi.xcertplay.transport.PioneerBluetooth.selectTarget(config.wirelessBluetoothDeviceAddress)
             } else null
-            val adapter = if (pioneerTarget == null) bluetoothAdapter
-                ?: throw IOException("Bluetooth adapter is unavailable") else null
-            if (adapter != null && !BydBluetoothSuspend.resumeAndWait(appContext, adapter)) {
-                throw IOException("Bluetooth recovery did not complete before the handshake")
+            val adapter = if (pioneerTarget == null) {
+                bluetoothAdapter ?: throw BluetoothRadioCheck.failure(BluetoothRadioCheck.NO_ADAPTER)
+            } else null
+            if (adapter != null) {
+                val bluetoothRecoveryComplete = BydBluetoothSuspend.resumeAndWait(appContext, adapter)
+                if (!adapter.isEnabled) throw IOException(BluetoothRadioCheck.RADIO_OFF)
+                if (!bluetoothRecoveryComplete) throw IOException("Bluetooth recovery did not complete before the handshake")
             }
-            if (adapter != null && !adapter.isEnabled) throw IOException("Bluetooth is not enabled")
             val device = adapter?.let(::selectWirelessBluetoothDevice)
             val hostBluetoothMac = pioneerTarget?.localAddress ?: accessoryBluetoothMac(requireNotNull(adapter))
-            debugLog("wireless Bluetooth backend=${if (pioneerTarget != null) "Pioneer SPP" else "Android RFCOMM"}")
+            if (pioneerTarget != null) {
+                debugLog("wireless Bluetooth backend=Pioneer SPP localBt=$hostBluetoothMac")
+            } else {
+                val androidDevice = requireNotNull(device)
+                debugLog(
+                    "wireless selected Bluetooth target name=${androidDevice.name ?: "unknown"} " +
+                        "address=${androidDevice.address} localBt=$hostBluetoothMac",
+                )
+            }
             val wirelessAirPlayConfig = airPlayConfig.copy(
                 deviceId = deviceIdentifier,
                 btMac = hostBluetoothMac,
@@ -1823,6 +1859,9 @@ class CarPlayController(
     private fun startIphone() {
         diagnosticRun.incrementAndGet()
         availabilityPollGeneration.incrementAndGet()
+        permissionPollGeneration++
+        usbAdbGrantAttempts.clear()
+        pendingUsbAdbGrants.clear()
         phase = Phase.IPHONE
         reenumerationAttempts = 0
         onStatus(CarPlayStatus.DiscoveringIphone)
@@ -1849,24 +1888,70 @@ class CarPlayController(
         mainHandler.post { doRequestIphonePermission(device) }
     }
 
-    private fun doRequestIphonePermission(device: UsbDevice) {
+    private fun doRequestIphonePermission(device: UsbDevice, allowAdbFallback: Boolean = true) {
         if (closed) return
+        if (usbAdbGrantKey(device) in pendingUsbAdbGrants) return
         try {
-            when (val request = iphoneHost.requestPermission(device)) {
+            when (val request = iphoneHost.requestPermission(device, allowAdbFallback)) {
                 is IphoneUsbHost.PermissionRequest.AlreadyGranted -> {
                     debugLog("wired iPhone USB permission already granted")
                     permissionGrant.set(false)
                     onIphonePermission(IphoneUsbHost.PermissionResult.Granted(request.device))
                 }
                 is IphoneUsbHost.PermissionRequest.Requested -> {
-                    debugLog("wired iPhone USB permission requested")
+                    debugLog(
+                        "wired iPhone USB permission requested " +
+                            "afterMissingUiAdbFailure=${request.afterMissingUiAdbFailure}",
+                    )
                     permissionGrant.set(false)
                     onStatus(CarPlayStatus.RequestingIphonePermission)
-                    pollIphonePermission(device)
+                    pollIphonePermission(device, request.afterMissingUiAdbFailure)
+                }
+                is IphoneUsbHost.PermissionRequest.AdbRequired -> {
+                    debugLog("wired iPhone USB permission route=ADB; system permission UI unavailable")
+                    permissionGrant.set(false)
+                    permissionPollGeneration++
+                    onStatus(CarPlayStatus.RequestingIphonePermission)
+                    attemptIphoneUsbAdbGrant(request.device)
                 }
             }
         } catch (error: Throwable) {
             fail(error)
+        }
+    }
+
+    private fun usbAdbGrantKey(device: UsbDevice): String =
+        "$phase:$reenumerationAttempts:${device.deviceName}:${device.deviceId}"
+
+    private fun attemptIphoneUsbAdbGrant(device: UsbDevice) {
+        val key = usbAdbGrantKey(device)
+        if (!usbAdbGrantAttempts.add(key)) {
+            doRequestIphonePermission(device, allowAdbFallback = false)
+            return
+        }
+        pendingUsbAdbGrants.add(key)
+        val grantPhase = phase
+        val grantGeneration = permissionPollGeneration
+        connectionDiagnostic(
+            "USB permission ADB grant starting phase=$phase reenumerationAttempts=$reenumerationAttempts",
+        )
+        executor.execute {
+            val result = runCatching { IphoneUsbAdbGrant.grant(appContext, device) }
+                .getOrElse { IphoneUsbAdbGrant.Result(IphoneUsbAdbGrant.Code.ERROR) }
+            connectionDiagnostic(
+                "USB permission ADB grant result=${result.code} attached=${result.attached} " +
+                    "granted=${result.granted}",
+            )
+            mainHandler.post {
+                if (closed || phase != grantPhase || permissionPollGeneration != grantGeneration) return@post
+                // A stale grant must not clear the same key owned by a newer reconnect generation.
+                pendingUsbAdbGrants.remove(key)
+                if (requireUsbManager().hasPermission(device)) {
+                    onIphonePermission(IphoneUsbHost.PermissionResult.Granted(device))
+                } else {
+                    doRequestIphonePermission(device, allowAdbFallback = false)
+                }
+            }
         }
     }
 
@@ -1880,22 +1965,31 @@ class CarPlayController(
                 when (phase) {
                     Phase.REENUMERATION, Phase.IPHONE -> {
                         val configuration = IphoneCarPlayConfiguration.find(result.device)
+                        val carPlayMode = configuration?.let(IphoneCarPlayConfiguration::isCarPlayMode) == true
+                        val sessionAlreadyStarted = WiredSessionMemory.startedOn(result.device.deviceName)
+                        val action = WiredConfigurationAction.choose(
+                            found = configuration != null,
+                            carPlayMode = carPlayMode,
+                            transitionsTried = reenumerationAttempts,
+                            maximumTransitions = MAXIMUM_REENUMERATION_ATTEMPTS,
+                            sessionAlreadyStarted = sessionAlreadyStarted,
+                        )
                         connectionDiagnostic(
                             "USB configuration ready=${configuration != null} " +
                                 "configurationId=${configuration?.id ?: "none"} " +
                                 "reenumerationAttempts=$reenumerationAttempts " +
-                                "action=${when {
-                                    configuration != null -> "reuse-descriptors"
-                                    reenumerationAttempts < MAXIMUM_REENUMERATION_ATTEMPTS -> "request-transition"
-                                    else -> "reject-missing-configuration"
-                                }}",
+                                (if (sessionAlreadyStarted && carPlayMode) "previousSessionOnThisEnumeration=true " else "") +
+                                "action=${action.diagnostic}",
                         )
-                        if (configuration != null) {
-                            openDataPaths(result.device)
-                        } else if (reenumerationAttempts < MAXIMUM_REENUMERATION_ATTEMPTS) {
-                            beginReenumeration(result.device)
-                        } else {
-                            fail(
+                        when (action) {
+                            WiredConfigurationAction.USE,
+                            WiredConfigurationAction.USE_WITHOUT_APPLE_ETHERNET -> openDataPaths(result.device)
+                            WiredConfigurationAction.REQUEST_TRANSITION -> beginReenumeration(
+                                result.device,
+                                WiredConfigurationAction.fallbackAfterRejection(
+                                    configuration != null, carPlayMode, sessionAlreadyStarted),
+                            )
+                            WiredConfigurationAction.REJECT -> fail(
                                 IphoneUsbException.Protocol(
                                     "iPhone did not expose a complete CarPlay USB configuration",
                                 ),
@@ -1913,8 +2007,10 @@ class CarPlayController(
     }
 
     /** Some Android builds grant the dialog without delivering the permission broadcast. */
-    private fun pollIphonePermission(device: UsbDevice) {
+    private fun pollIphonePermission(device: UsbDevice, afterMissingUiAdbFailure: Boolean = false) {
         val generation = ++permissionPollGeneration
+        // A custom OEM permission page may still be visible even when the standard AOSP component
+        // is absent. Preserve the full user-response window after the ADB fallback fails.
         val deadlineNanos = System.nanoTime() + PERMISSION_POLL_TIMEOUT_MILLIS * 1_000_000L
         val check = object : Runnable {
             override fun run() {
@@ -1927,7 +2023,12 @@ class CarPlayController(
                     if (permissionGrant.compareAndSet(false, true)) {
                         onStatus(
                             CarPlayStatus.Failed(
-                                "iPhone USB permission was not granted; tap Reconnect iPhone to retry",
+                                if (afterMissingUiAdbFailure) {
+                                    "The head unit's standard USB authorization page is unavailable, and neither " +
+                                        "approved ADB nor its system permission request granted iPhone access"
+                                } else {
+                                    "iPhone USB permission was not granted; tap Reconnect iPhone to retry"
+                                },
                             ),
                         )
                     }
@@ -1939,7 +2040,8 @@ class CarPlayController(
         mainHandler.postDelayed(check, PERMISSION_POLL_INTERVAL_MILLIS)
     }
 
-    private fun beginReenumeration(device: UsbDevice) {
+    /** [fallbackAfterRejection]: the iPhone already offers USBMUX and NCM, so try that if it refuses. */
+    private fun beginReenumeration(device: UsbDevice, fallbackAfterRejection: Boolean = false) {
         phase = Phase.REENUMERATION
         reenumerationAttempts += 1
         connectionDiagnostic("USB transition requested count=$reenumerationAttempts")
@@ -1948,7 +2050,17 @@ class CarPlayController(
             when (transition) {
                 IphoneUsbHost.TransitionResult.ReenumerationRequested ->
                     onStatus(CarPlayStatus.WaitingForReenumeration)
-                is IphoneUsbHost.TransitionResult.Failed -> fail(transition.error)
+                is IphoneUsbHost.TransitionResult.Failed -> if (fallbackAfterRejection) {
+                    connectionDiagnostic(
+                        "USB transition rejected; using the configuration the iPhone offers " +
+                            "error=${transition.error.message}",
+                    )
+                    mainHandler.post {
+                        if (!closed && phase == Phase.REENUMERATION) openDataPaths(device)
+                    }
+                } else {
+                    fail(transition.error)
+                }
             }
         }
     }
@@ -1981,6 +2093,7 @@ class CarPlayController(
 
     private fun openDataPaths(device: UsbDevice) {
         phase = Phase.DATAPATHS
+        wiredDeviceName = device.deviceName
         debugLog("wired opening iPhone USB data paths")
         onStatus(CarPlayStatus.SelectingConfiguration)
         onStatus(CarPlayStatus.OpeningDataPaths)
@@ -2171,7 +2284,10 @@ class CarPlayController(
                 locationProvider = locationProvider,
                 vehicleStatusProvider = vehicleStatusProvider,
                 onIncoming = ::onRouteFrame,
-                onProgress = { message -> debugLog("wired $message") },
+                onProgress = { message ->
+                    if (message.startsWith(START_SESSION_PROGRESS)) wiredDeviceName?.let(WiredSessionMemory::started)
+                    debugLog("wired $message")
+                },
             )
             onStatus(
                 when (result.terminal) {
@@ -2237,11 +2353,13 @@ class CarPlayController(
                     "${result.diagnostic}. Open the car hotspot settings and connect again.")
             }
         }
-        if (hotspotMode == WirelessHotspotMode.MANUAL &&
-            com.shilapi.xcertplay.network.CarHotspotStatus.isEnabled(appContext) == false
-        ) {
-            throw WirelessStartupException(WirelessStartupFailure.HOTSPOT_CONFIGURATION,
-                "The car hotspot is off. Turn it on in the car settings and connect again.")
+        if (hotspotMode == WirelessHotspotMode.MANUAL) {
+            val state = com.shilapi.xcertplay.network.CarHotspotStatus.isEnabled(appContext)
+            if (com.shilapi.xcertplay.network.CarHotspotSettings.reportedOff(appContext, state)) {
+                throw WirelessStartupException(WirelessStartupFailure.HOTSPOT_CONFIGURATION,
+                    "The car hotspot is off. Turn it on in the car settings and connect again.")
+            }
+            if (state == false) debugLog("car hotspot: Android reports it off; connecting anyway, as the driver chose")
         }
         val manager: WirelessHotspotManager = when (hotspotMode) {
             WirelessHotspotMode.WIFI_P2P -> WifiP2pGroupManager(appContext, ::debugLog,
@@ -2304,6 +2422,12 @@ class CarPlayController(
     // close, or never taken.
     private fun pauseWifiScans(backend: WirelessHotspotBackend) = synchronized(wirelessResourceLock) {
         if (closed || !WifiScanPause.eligible(backend)) return@synchronized
+        // Settings → Connection lets a driver keep the car's automatic joining, e.g. for the phone's hotspot (#755).
+        if (!appContext.getSharedPreferences("xcertplay_airplay", android.content.Context.MODE_PRIVATE)
+                .getBoolean("wifi_direct_scan_pause", true)) {
+            if (wifiScanPause == null) debugLog("Wi-Fi scan pause off in Settings; the car keeps searching and joining networks")
+            return@synchronized
+        }
         (wifiScanPause ?: WifiScanPause(appContext, ::debugLog).also { wifiScanPause = it }).pause()
     }
 
@@ -2444,11 +2568,11 @@ class CarPlayController(
                 "Timed out after ${RFCOMM_CONNECT_TIMEOUT_MILLIS}ms connecting RFCOMM to $address",
             )
         }
-        when (val failure = result.get()) {
-            null -> Unit
-            is IOException -> throw failure
-            else -> throw IOException("Could not connect RFCOMM to $address", failure)
+        val failure = result.get() ?: return
+        if (BluetoothLinkCheck.socketServiceMissing(failure)) {
+            connectionDiagnostic("Bluetooth socket manager missing failureClass=${failure.javaClass.simpleName}")
         }
+        throw BluetoothLinkCheck.connectFailure(failure, address)
     }
 
     /** Reads cached service metadata only; it does not start/cancel discovery or require SCAN. */
@@ -2940,6 +3064,7 @@ class CarPlayController(
         private const val WIRELESS_HANDOFF_TIMEOUT_MILLIS = 45_000L
         private const val RFCOMM_CONNECT_TIMEOUT_MILLIS = 15_000L
         private const val MAXIMUM_REENUMERATION_ATTEMPTS = 2
+        private const val START_SESSION_PROGRESS = "iap2 tx=0x4301"
         private const val EXECUTOR_CLOSE_TIMEOUT_MILLIS = 2_000L
         private const val ADAPTER_ADDRESS_PLACEHOLDER = "02:00:00:00:00:00"
         private val BLUETOOTH_ADDRESS = Regex("^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}$")
