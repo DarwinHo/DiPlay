@@ -75,9 +75,8 @@ internal class UsbReadQueuePolicy(private val queueCeiling: Int? = null) {
         private const val MIN_COMPATIBILITY_BYTES = 2 * 1024
 
         fun forCurrentPlatform(): UsbReadQueuePolicy = UsbReadQueuePolicy(
-            // Android 7 uses queue(ByteBuffer, Int); Android 9 removed the new queue's bound.
-            // Only API 26/27 require a ceiling before queueing, rather than a retry on false.
-            if (Build.VERSION.SDK_INT in Build.VERSION_CODES.O until Build.VERSION_CODES.P) {
+            // Android 7/8 kernels enforce a 16 KiB USBFS bulk URB buffer ceiling; Android 9 removed it.
+            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.O_MR1) {
                 USBFS_BULK_URB_CEILING_BYTES
             } else {
                 null

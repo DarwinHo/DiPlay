@@ -110,9 +110,8 @@ class DiagnosticExportUiTest {
             button.performClick()
             val intent = shadowOf(activity).nextStartedActivity
             assertNotNull(intent)
-            assertEquals("com.android.documentsui", intent.component?.packageName)
-            assertEquals("com.android.documentsui.FilesActivity", intent.component?.className)
-            assertEquals(Intent.ACTION_MAIN, intent.action)
+            assertEquals("android.provider.action.BROWSE", intent.action)
+            assertEquals("vnd.android.document/root", intent.type)
             assertTrue((intent.flags and Intent.FLAG_ACTIVITY_NEW_TASK) != 0)
         } finally {
             controller.pause().stop().destroy()

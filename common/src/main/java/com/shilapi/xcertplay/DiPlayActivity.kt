@@ -5507,20 +5507,22 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
     }
 
     private fun openFileManager() {
-        val intent = Intent(Intent.ACTION_MAIN).apply {
-            component = ComponentName("com.android.documentsui", "com.android.documentsui.FilesActivity")
+        val rootUri = Uri.parse("content://com.android.externalstorage.documents/root/primary")
+        val intent = Intent("android.provider.action.BROWSE").apply {
+            setDataAndType(rootUri, "vnd.android.document/root")
+            addCategory(Intent.CATEGORY_DEFAULT)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         try {
             startActivity(intent)
-        } catch (e: Exception) {
-            val fallback = packageManager.getLaunchIntentForPackage("com.android.documentsui")
-                ?: Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-                    addCategory(Intent.CATEGORY_OPENABLE)
-                    type = "*/*"
-                }
+        } catch (_: Exception) {
+            val fallback = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                addCategory(Intent.CATEGORY_OPENABLE)
+                type = "*/*"
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
             try {
-                startActivity(fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                startActivity(fallback)
             } catch (fallbackError: Exception) {
                 Log.w("DiPlay", "Unable to open car file manager", fallbackError)
             }
