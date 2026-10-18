@@ -870,4 +870,6 @@
     <string name="settings_wifi_direct_scan_pause_description">В режиме Wi-Fi Direct автомобиль ищет сети Wi-Fi каждые несколько секунд, и каждый поиск прерывает музыку и видео. Когда параметр включён, DiPlay приостанавливает поиск, пока работает CarPlay. Тогда автомобиль и сам не подключается к известной сети, например к точке доступа телефона, пока CarPlay не завершится; подключиться можно вручную в настройках Wi-Fi автомобиля. Выключите, чтобы автомобиль подключался сам. Применяется при следующем подключении.</string>
     <string name="settings_open_file_manager">Открыть диспетчер файлов авто</string>
     <string name="settings_open_file_manager_description">Открыть встроенный диспетчер файлов головного устройства для просмотра USB-накопителей и установки приложений.</string>
+    <string name="settings_open_android_settings">Открыть настройки Android</string>
+    <string name="settings_open_android_settings_description">Открыть полные настройки Android для настройки Wi-Fi, параметров разработчика и приложений.</string>
 </resources>

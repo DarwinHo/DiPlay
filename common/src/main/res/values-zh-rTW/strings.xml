@@ -930,4 +930,6 @@
     <string name="settings_wifi_direct_scan_pause_description">Wi-Fi Direct 時，車機每隔幾秒搜尋一次 Wi-Fi 網路，每次搜尋都會讓音樂和畫面卡頓。開啟後，CarPlay 執行期間 DiPlay 會暫停這個搜尋。這段期間車機也不會自動連線已知網路（例如手機熱點），可以在車機 Wi-Fi 設定裡手動連線；CarPlay 結束後恢復。關閉後車機可以自動連線。下次連線時生效。</string>
     <string name="settings_open_file_manager">開啟車載檔案管理器</string>
     <string name="settings_open_file_manager_description">開啟車機內建的檔案管理器，可瀏覽隨身碟並直接安裝應用程式。</string>
+    <string name="settings_open_android_settings">開啟安卓原生設定</string>
+    <string name="settings_open_android_settings_description">開啟系統完整的安卓設定，可配置 Wi-Fi、開發者選項及應用程式管理。</string>
 </resources>

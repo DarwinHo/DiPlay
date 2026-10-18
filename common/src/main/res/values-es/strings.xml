@@ -870,4 +870,6 @@
     <string name="settings_wifi_direct_scan_pause_description">Con Wi-Fi Direct el coche busca redes Wi-Fi cada pocos segundos, y cada búsqueda hace que la música y el vídeo se corten. Con esta opción, DiPlay pausa la búsqueda mientras CarPlay está activo. Entonces el coche tampoco se conecta solo a una red conocida, como el punto de acceso de tu teléfono, hasta que CarPlay termina; puedes conectarte a mano en los ajustes de Wi-Fi del coche. Desactívala para que el coche se conecte solo. Se aplica en la próxima conexión.</string>
     <string name="settings_open_file_manager">Abrir administrador de archivos del coche</string>
     <string name="settings_open_file_manager_description">Abre el administrador de archivos integrado en la unidad principal para explorar memorias USB e instalar aplicaciones.</string>
+    <string name="settings_open_android_settings">Abrir ajustes nativos de Android</string>
+    <string name="settings_open_android_settings_description">Abre los ajustes completos de Android para configurar Wi-Fi, opciones de desarrollador y aplicaciones.</string>
 </resources>

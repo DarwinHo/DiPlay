@@ -972,4 +972,6 @@
     <string name="pioneer_bluetooth_no_paired_phones">パイオニア純正Bluetoothにペアリング済みのスマートフォンが見つかりませんでした。純正Bluetooth画面でiPhoneをペアリングしてから、DiPlayに戻ってください。</string>
     <string name="settings_open_file_manager">車載ファイルマネージャーを開く</string>
     <string name="settings_open_file_manager_description">車載端末内蔵のファイルマネージャーを開き、USBメモリの閲覧やアプリのインストールを行います。</string>
+    <string name="settings_open_android_settings">Android標準設定を開く</string>
+    <string name="settings_open_android_settings_description">システム標準のAndroid設定を開き、Wi-Fi、開発者向けオプション、アプリを管理します。</string>
 </resources>

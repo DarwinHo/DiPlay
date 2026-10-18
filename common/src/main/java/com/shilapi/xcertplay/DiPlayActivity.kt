@@ -1751,6 +1751,8 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
             card.addView(label(destination + getString(R.string.nothing_is_sent_automatically_protocol_payloads_and_creden), 14, MUTED).apply { setPadding(0, dp(12), 0, 0) })
             card.addView(button(getString(R.string.settings_open_file_manager), false) { openFileManager() }, matchButton(10, 60))
             card.addView(label(getString(R.string.settings_open_file_manager_description), 14, MUTED).apply { setPadding(0, dp(8), 0, 0) })
+            card.addView(button(getString(R.string.settings_open_android_settings), false) { openAndroidSettings() }, matchButton(10, 60))
+            card.addView(label(getString(R.string.settings_open_android_settings_description), 14, MUTED).apply { setPadding(0, dp(8), 0, 0) })
             toggle(card, getString(R.string.settings_fps_counter), getString(R.string.settings_fps_counter_description),
                 AirPlayPersistence.loadFpsCounter(this)) { AirPlayPersistence.saveFpsCounter(this, it) }
         }
@@ -5507,6 +5509,25 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
     }
 
     private fun openFileManager() {
+        val knownFileManagerPackages = listOf(
+            "com.tencent.sotainstaller", // Whitelisted auxiliary package
+            "com.amaze.filemanager",
+            "com.speedsoftware.rootexplorer",
+            "bin.mt.plus",
+            "com.estrongs.android.pop",
+            "com.mixplorer",
+            "com.android.documentsui",
+        )
+        for (pkg in knownFileManagerPackages) {
+            val launchIntent = packageManager.getLaunchIntentForPackage(pkg)
+            if (launchIntent != null && pkg != "com.android.documentsui") {
+                try {
+                    startActivity(launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                    return
+                } catch (_: Exception) {
+                }
+            }
+        }
         val rootUri = Uri.parse("content://com.android.externalstorage.documents/root/primary")
         val intent = Intent("android.provider.action.BROWSE").apply {
             setDataAndType(rootUri, "vnd.android.document/root")
@@ -5525,6 +5546,21 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
                 startActivity(fallback)
             } catch (fallbackError: Exception) {
                 Log.w("DiPlay", "Unable to open car file manager", fallbackError)
+            }
+        }
+    }
+
+    private fun openAndroidSettings() {
+        val candidates = listOf(
+            Intent(Settings.ACTION_SETTINGS),
+            Intent().setComponent(ComponentName("com.android.settings", "com.android.settings.Settings")),
+            Intent(Settings.ACTION_DEVICE_INFO_SETTINGS),
+        )
+        for (intent in candidates) {
+            try {
+                startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                return
+            } catch (_: Exception) {
             }
         }
     }

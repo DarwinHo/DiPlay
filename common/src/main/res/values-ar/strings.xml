@@ -919,4 +919,6 @@
     <string name="settings_wifi_direct_scan_pause_description">مع Wi-Fi Direct تبحث السيارة عن شبكات Wi-Fi كل بضع ثوانٍ، وكل بحث يجعل الموسيقى والفيديو يتقطعان. عند تشغيل هذا الخيار يوقف DiPlay البحث أثناء تشغيل CarPlay. عندها لا تتصل السيارة تلقائيًا بشبكة معروفة، مثل نقطة اتصال هاتفك، حتى ينتهي CarPlay؛ ويمكنك الاتصال بها يدويًا من إعدادات Wi-Fi في السيارة. أوقفه لتتصل السيارة تلقائيًا. يُطبَّق عند الاتصال التالي.</string>
     <string name="settings_open_file_manager">فتح مدير ملفات السيارة</string>
     <string name="settings_open_file_manager_description">فتح مدير الملفات المدمج في وحدة القيادة لتصفح وحدات تخزين USB وتثبيت التطبيقات.</string>
+    <string name="settings_open_android_settings">فتح إعدادات أندرويد الأصلية</string>
+    <string name="settings_open_android_settings_description">افتح إعدادات أندرويد الكاملة للنظام لتكوين Wi-Fi وخيارات المطور والتطبيقات.</string>
 </resources>
