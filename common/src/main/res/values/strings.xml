@@ -990,4 +990,14 @@
 %1$s</string>
     <string name="wireless_adb_enabled_no_ip">Wireless ADB port 5555 is configured. Connect the head unit to Wi-Fi to obtain an IP address.</string>
     <string name="silent_install_dispatched">Silent install dispatched. The app will update and relaunch automatically.</string>
+
+    <string name="settings_test_pioneer_root">Test Pioneer root channel</string>
+    <string name="settings_test_pioneer_root_description">Test whether the Pioneer native systemcall executes commands with root privileges in a safe temporary path.</string>
+    <string name="pioneer_root_test_failed">Pioneer channel call failed:
+%1$s</string>
+    <string name="pioneer_root_test_success_root">Root execution confirmed (UID 0):
+%1$s</string>
+    <string name="pioneer_root_test_success_non_root">Execution succeeded but without root:
+%1$s</string>
+    <string name="pioneer_root_test_no_file">Command was submitted (return: %1$s), but no output file was generated.</string>
 </resources>

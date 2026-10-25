@@ -947,4 +947,14 @@
 %1$s</string>
     <string name="wireless_adb_enabled_no_ip">無線 ADB 除錯連接埠 5555 已設定。請先將車機連線至 Wi-Fi 取得 IP 位址。</string>
     <string name="silent_install_dispatched">已提交無感安裝。應用程式將在背景更新後自動重新啟動。</string>
+
+    <string name="settings_test_pioneer_root">測試先鋒底層執行權限</string>
+    <string name="settings_test_pioneer_root_description">測試先鋒原生 systemcall 是否具備 Root 執行權限（在安全臨時目錄測試，零風險）。</string>
+    <string name="pioneer_root_test_failed">先鋒通道調用失敗：
+%1$s</string>
+    <string name="pioneer_root_test_success_root">成功確認具備 Root 權限（UID 0）：
+%1$s</string>
+    <string name="pioneer_root_test_success_non_root">執行成功，但非 Root 身份：
+%1$s</string>
+    <string name="pioneer_root_test_no_file">指令已提交（返回值：%1$s），但未生成輸出檔案。</string>
 </resources>

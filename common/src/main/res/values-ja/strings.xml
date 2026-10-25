@@ -989,4 +989,14 @@
 %1$s</string>
     <string name="wireless_adb_enabled_no_ip">ワイヤレスADBポート5555が設定されました。車載端末をWi-Fiに接続してIPアドレスを取得してください。</string>
     <string name="silent_install_dispatched">サイレントインストールを開始しました。アプリはバックグラウンドで更新され、自動的に再起動します。</string>
+
+    <string name="settings_test_pioneer_root">パイオニアRoot実行権限をテスト</string>
+    <string name="settings_test_pioneer_root_description">パイオニア純正のsystemcallがRoot権限でコマンドを実行できるか安全な一時領域でテストします。</string>
+    <string name="pioneer_root_test_failed">パイオニアチャネルの呼び出しに失敗しました：
+%1$s</string>
+    <string name="pioneer_root_test_success_root">Root権限（UID 0）の実行を確認しました：
+%1$s</string>
+    <string name="pioneer_root_test_success_non_root">実行に成功しましたが、Root権限ではありません：
+%1$s</string>
+    <string name="pioneer_root_test_no_file">コマンドは送信されました（戻り値：%1$s）が、出力ファイルは生成されませんでした。</string>
 </resources>

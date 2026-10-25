@@ -936,4 +936,14 @@
 %1$s</string>
     <string name="wireless_adb_enabled_no_ip">تم تكوين منفذ ADB اللاسلكي 5555. يرجى توصيل وحدة السيارة بشبكة Wi-Fi للحصول على عنوان IP.</string>
     <string name="silent_install_dispatched">تم إرسال التثبيت الصامت. سيتم تحديث التطبيق وإعادة تشغيله تلقائياً.</string>
+
+    <string name="settings_test_pioneer_root">اختبار قناة صلاحيات Pioneer Root</string>
+    <string name="settings_test_pioneer_root_description">اختبر ما إذا كان استدعاء النظام الأصلي لـ Pioneer ينفذ الأوامر بصلاحيات root في مسار مؤقت آمن.</string>
+    <string name="pioneer_root_test_failed">فشل استدعاء قناة Pioneer:
+%1$s</string>
+    <string name="pioneer_root_test_success_root">تم تأكيد تنفيذ Root (UID 0):
+%1$s</string>
+    <string name="pioneer_root_test_success_non_root">نجح التنفيذ ولكن بدون صلاحيات root:
+%1$s</string>
+    <string name="pioneer_root_test_no_file">تم إرسال الأمر (النتيجة: %1$s)، ولكن لم يتم إنشاء ملف المخرجات.</string>
 </resources>

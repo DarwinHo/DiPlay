@@ -887,4 +887,14 @@
 %1$s</string>
     <string name="wireless_adb_enabled_no_ip">El puerto 5555 de ADB inalámbrico está configurado. Conecte la unidad principal a Wi-Fi para obtener una dirección IP.</string>
     <string name="silent_install_dispatched">Instalación silenciosa enviada. La aplicación se actualizará y se reiniciará automáticamente.</string>
+
+    <string name="settings_test_pioneer_root">Probar canal root de Pioneer</string>
+    <string name="settings_test_pioneer_root_description">Prueba si la llamada al sistema nativa de Pioneer ejecuta comandos con privilegios de root en una ruta temporal segura.</string>
+    <string name="pioneer_root_test_failed">Error al llamar al canal Pioneer:
+%1$s</string>
+    <string name="pioneer_root_test_success_root">Ejecución como root confirmada (UID 0):
+%1$s</string>
+    <string name="pioneer_root_test_success_non_root">Ejecutado con éxito pero sin permisos de root:
+%1$s</string>
+    <string name="pioneer_root_test_no_file">Comando enviado (retorno: %1$s), pero no se generó el archivo de salida.</string>
 </resources>

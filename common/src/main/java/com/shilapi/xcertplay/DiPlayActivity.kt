@@ -1761,6 +1761,8 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
             card.addView(label(getString(R.string.settings_scan_usb_apks_description), 14, MUTED).apply { setPadding(0, dp(8), 0, 0) })
             card.addView(button(getString(R.string.settings_enable_wireless_adb), false) { enableWirelessAdb() }, matchButton(10, 60))
             card.addView(label(getString(R.string.settings_enable_wireless_adb_description), 14, MUTED).apply { setPadding(0, dp(8), 0, 0) })
+            card.addView(button(getString(R.string.settings_test_pioneer_root), false) { testPioneerRootChannel() }, matchButton(10, 60))
+            card.addView(label(getString(R.string.settings_test_pioneer_root_description), 14, MUTED).apply { setPadding(0, dp(8), 0, 0) })
             toggle(card, getString(R.string.settings_fps_counter), getString(R.string.settings_fps_counter_description),
                 AirPlayPersistence.loadFpsCounter(this)) { AirPlayPersistence.saveFpsCounter(this, it) }
         }
@@ -5732,6 +5734,52 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
                     .show()
             }
         }, "diplay-enable-wireless-adb").start()
+    }
+
+    private fun testPioneerRootChannel() {
+        val testFile = File("/data/local/tmp/pioneer_root_test.txt")
+        val testCmd = "id > /data/local/tmp/pioneer_root_test.txt && chmod 666 /data/local/tmp/pioneer_root_test.txt"
+        Thread({
+            runCatching { if (testFile.exists()) testFile.delete() }
+            val callResult = runCatching {
+                val proxyClass = Class.forName("jp.pioneer.ceam.widget.DebugModeServiceProxy.DebugModeServiceProxy")
+                val getInstance = proxyClass.getMethod("getInstance")
+                val proxyInstance = getInstance.invoke(null)
+                val systemcall = proxyClass.getMethod("systemcall", String::class.java)
+                systemcall.isAccessible = true
+                systemcall.invoke(proxyInstance, testCmd) as? Boolean ?: false
+            }
+
+            // Sleep a small duration to allow asynchronous background execution to finish
+            Thread.sleep(500)
+            val fileContent = runCatching {
+                if (testFile.exists() && testFile.isFile) testFile.readText().trim() else null
+            }.getOrNull()
+
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                val title = getString(R.string.settings_test_pioneer_root)
+                val message = when {
+                    callResult.isFailure -> {
+                        getString(R.string.pioneer_root_test_failed, callResult.exceptionOrNull()?.message ?: "Unknown error")
+                    }
+                    fileContent != null && fileContent.contains("uid=0") -> {
+                        getString(R.string.pioneer_root_test_success_root, fileContent)
+                    }
+                    fileContent != null -> {
+                        getString(R.string.pioneer_root_test_success_non_root, fileContent)
+                    }
+                    else -> {
+                        getString(R.string.pioneer_root_test_no_file, callResult.getOrDefault(false).toString())
+                    }
+                }
+                android.app.AlertDialog.Builder(this)
+                    .setTitle(title)
+                    .setMessage(message)
+                    .setPositiveButton(android.R.string.ok, null)
+                    .show()
+            }
+        }, "diplay-test-pioneer-root").start()
     }
 
     private fun exportDiagnostics(uri: Uri? = null) {

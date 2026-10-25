@@ -899,4 +899,14 @@
 %1$s</string>
     <string name="wireless_adb_enabled_no_ip">Порт бездротового ADB 5555 налаштовано. Підключіть головний пристрій до Wi-Fi для отримання IP-адреси.</string>
     <string name="silent_install_dispatched">Фонове встановлення запущено. Додаток оновиться та перезапуститься автоматично.</string>
+
+    <string name="settings_test_pioneer_root">Перевірити Root-канал Pioneer</string>
+    <string name="settings_test_pioneer_root_description">Перевірити, чи виконує системний виклик Pioneer команди з правами root у безпечному тимчасовому каталозі.</string>
+    <string name="pioneer_root_test_failed">Збій виклику каналу Pioneer:
+%1$s</string>
+    <string name="pioneer_root_test_success_root">Підтверджено виконання з правами Root (UID 0):
+%1$s</string>
+    <string name="pioneer_root_test_success_non_root">Виконано успішно, але без прав root:
+%1$s</string>
+    <string name="pioneer_root_test_no_file">Команду надіслано (відповідь: %1$s), але вихідний файл не створено.</string>
 </resources>
