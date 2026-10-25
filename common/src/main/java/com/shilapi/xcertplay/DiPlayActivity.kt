@@ -5677,7 +5677,7 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
             android.app.AlertDialog.Builder(this)
                 .setTitle(R.string.settings_scan_usb_apks)
                 .setMessage(R.string.scan_usb_apks_none_found)
-                .setPositiveButton(R.string.common_ok, null)
+                .setPositiveButton(android.R.string.ok, null)
                 .show()
             return
         }
@@ -5728,7 +5728,7 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
                 android.app.AlertDialog.Builder(this)
                     .setTitle(title)
                     .setMessage(message)
-                    .setPositiveButton(R.string.common_ok, null)
+                    .setPositiveButton(android.R.string.ok, null)
                     .show()
             }
         }, "diplay-enable-wireless-adb").start()
