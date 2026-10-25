@@ -877,4 +877,14 @@
     <string name="settings_reload_wifi_country_code">Recargar código de país Wi-Fi (US)</string>
     <string name="settings_reload_wifi_country_code_description">Recarga dinámicamente el código de país Wi-Fi a US para desbloquear canales de 5 GHz para zona Wi-Fi y Wi-Fi Direct.</string>
     <string name="wifi_country_code_reloaded">Código de país Wi-Fi recargado a US</string>
+    <string name="settings_scan_usb_apks">Buscar e instalar APK desde USB</string>
+    <string name="settings_scan_usb_apks_description">Explora /mnt/udisk en busca de archivos APK en la memoria USB conectada e instala directamente.</string>
+    <string name="scan_usb_apks_none_found">No se encontraron paquetes APK en el almacenamiento USB (/mnt/udisk). Asegúrese de que una memoria USB FAT32 esté conectada.</string>
+    <string name="settings_enable_wireless_adb">Habilitar ADB inalámbrico (puerto 5555)</string>
+    <string name="settings_enable_wireless_adb_description">Inicia la escucha de red ADB en el puerto 5555 para depurar de forma inalámbrica y mantener el puerto USB físico para iPhone.</string>
+    <string name="wireless_adb_enabled_message">El puerto 5555 de ADB inalámbrico está habilitado. En su computadora (conectada al mismo Wi-Fi), ejecute:
+
+%1$s</string>
+    <string name="wireless_adb_enabled_no_ip">El puerto 5555 de ADB inalámbrico está configurado. Conecte la unidad principal a Wi-Fi para obtener una dirección IP.</string>
+    <string name="silent_install_dispatched">Instalación silenciosa enviada. La aplicación se actualizará y se reiniciará automáticamente.</string>
 </resources>

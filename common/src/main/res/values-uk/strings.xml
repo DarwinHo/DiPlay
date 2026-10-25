@@ -889,4 +889,14 @@
     <string name="settings_reload_wifi_country_code">Перезавантажити код країни Wi-Fi (US)</string>
     <string name="settings_reload_wifi_country_code_description">Динамічно перезавантажити код країни Wi-Fi на US для розблокування каналів 5 ГГц для точки доступу та Wi-Fi Direct.</string>
     <string name="wifi_country_code_reloaded">Код країни Wi-Fi перезавантажено на US</string>
+    <string name="settings_scan_usb_apks">Пошук та встановлення APK з USB</string>
+    <string name="settings_scan_usb_apks_description">Пошук файлів APK на підключеному USB-накопичувачі (/mnt/udisk) та пряме встановлення.</string>
+    <string name="scan_usb_apks_none_found">Файли APK не знайдені на USB-накопичувачі (/mnt/udisk). Переконайтеся, що підключено накопичувач FAT32.</string>
+    <string name="settings_enable_wireless_adb">Увімкнути бездротовий ADB (порт 5555)</string>
+    <string name="settings_enable_wireless_adb_description">Запустити налагодження через порт 5555 для бездротового підключення та збереження фізичного порту USB для iPhone.</string>
+    <string name="wireless_adb_enabled_message">Бездротовий порт ADB 5555 увімкнено. На комп\'ютері (підключеному до тієї ж мережі Wi-Fi) виконайте:
+
+%1$s</string>
+    <string name="wireless_adb_enabled_no_ip">Порт бездротового ADB 5555 налаштовано. Підключіть головний пристрій до Wi-Fi для отримання IP-адреси.</string>
+    <string name="silent_install_dispatched">Фонове встановлення запущено. Додаток оновиться та перезапуститься автоматично.</string>
 </resources>

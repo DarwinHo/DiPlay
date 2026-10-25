@@ -926,4 +926,14 @@
     <string name="settings_reload_wifi_country_code">إعادة تحميل رمز دولة Wi-Fi (US)</string>
     <string name="settings_reload_wifi_country_code_description">إعادة تحميل رمز دولة Wi-Fi ديناميكيًا إلى US لفتح قنوات 5 جيجاهرتز لنقطة الاتصال وWi-Fi Direct.</string>
     <string name="wifi_country_code_reloaded">تمت إعادة تحميل رمز دولة Wi-Fi إلى US</string>
+    <string name="settings_scan_usb_apks">فحص وتثبيت APK من USB</string>
+    <string name="settings_scan_usb_apks_description">افحص /mnt/udisk بحثاً عن ملفات APK في وحدة USB المتصلة وقم بالتثبيت مباشرة.</string>
+    <string name="scan_usb_apks_none_found">لم يتم العثور على حزم تثبيت APK على وحدة تخزين USB (/mnt/udisk). يرجى التأكد من توصيل محرك USB بتنسيق FAT32.</string>
+    <string name="settings_enable_wireless_adb">تفعيل ADB اللاسلكي (منفذ 5555)</string>
+    <string name="settings_enable_wireless_adb_description">بدء الاستماع إلى شبكة ADB على المنفذ 5555 لتصحيح الأخطاء لاسلكياً والاحتفاظ بمنفذ USB الفعلي لـ iPhone.</string>
+    <string name="wireless_adb_enabled_message">تم تفعيل منفذ ADB اللاسلكي 5555. على جهاز الكمبيوتر الخاص بك (المتصل بنفس شبكة Wi-Fi)، قم بتشغيل:
+
+%1$s</string>
+    <string name="wireless_adb_enabled_no_ip">تم تكوين منفذ ADB اللاسلكي 5555. يرجى توصيل وحدة السيارة بشبكة Wi-Fi للحصول على عنوان IP.</string>
+    <string name="silent_install_dispatched">تم إرسال التثبيت الصامت. سيتم تحديث التطبيق وإعادة تشغيله تلقائياً.</string>
 </resources>

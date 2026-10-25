@@ -538,9 +538,12 @@ object AirPlayPersistence {
             .putBoolean(KEY_EXTERNAL_CONTROLLER, enabled).apply()
     }
 
-    fun loadUsbChargingCurrent(context: Context): UsbChargingCurrent = UsbChargingCurrent.fromKey(
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_USB_CHARGING_CURRENT, null),
-    )
+    fun loadUsbChargingCurrent(context: Context): UsbChargingCurrent {
+        val saved = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_USB_CHARGING_CURRENT, null)
+        if (saved != null) return UsbChargingCurrent.fromKey(saved)
+        // Default to LOW (500 mA) on Android 7.1.2 (API 25) head units to prevent hardware over-current trips
+        return if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.N_MR1) UsbChargingCurrent.LOW else UsbChargingCurrent.NORMAL
+    }
 
     fun saveUsbChargingCurrent(context: Context, current: UsbChargingCurrent) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()

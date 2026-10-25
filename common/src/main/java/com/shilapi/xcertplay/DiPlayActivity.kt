@@ -1757,6 +1757,10 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
             card.addView(label(getString(R.string.settings_open_pioneer_maintenance_description), 14, MUTED).apply { setPadding(0, dp(8), 0, 0) })
             card.addView(button(getString(R.string.settings_reload_wifi_country_code), false) { reloadWifiCountryCode() }, matchButton(10, 60))
             card.addView(label(getString(R.string.settings_reload_wifi_country_code_description), 14, MUTED).apply { setPadding(0, dp(8), 0, 0) })
+            card.addView(button(getString(R.string.settings_scan_usb_apks), false) { scanUsbApks() }, matchButton(10, 60))
+            card.addView(label(getString(R.string.settings_scan_usb_apks_description), 14, MUTED).apply { setPadding(0, dp(8), 0, 0) })
+            card.addView(button(getString(R.string.settings_enable_wireless_adb), false) { enableWirelessAdb() }, matchButton(10, 60))
+            card.addView(label(getString(R.string.settings_enable_wireless_adb_description), 14, MUTED).apply { setPadding(0, dp(8), 0, 0) })
             toggle(card, getString(R.string.settings_fps_counter), getString(R.string.settings_fps_counter_description),
                 AirPlayPersistence.loadFpsCounter(this)) { AirPlayPersistence.saveFpsCounter(this, it) }
         }
@@ -2715,6 +2719,20 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
         installApk(updateFile ?: return)
     }
 
+    private fun trySilentInstall(file: File): Boolean = runCatching {
+        val service = Intent().apply {
+            component = ComponentName("com.tencent.sotainstaller", "com.tencent.sotainstaller.InstallerService")
+            putExtra("INSTALL_APP_PKG", packageName)
+            putExtra("INSTALL_APP_PATH", file.absolutePath)
+            putExtra("INSTALL_OPEN_APP_PKG_ATY", true)
+        }
+        if (packageManager.queryIntentServices(service, 0).isNotEmpty()) {
+            startService(service)
+            Log.i("DiPlay-Update", "dispatched silent install via sotainstaller path=${file.absolutePath}")
+            true
+        } else false
+    }.getOrDefault(false)
+
     private fun installApk(file: File) {
         // The public copy lets file managers such as MT Manager open the APK. The private provider URI is the fallback,
         // including when the driver deleted the public copy.
@@ -2725,7 +2743,14 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
         updateInstallWorker(Runnable {
             val publicUri = savedUri?.takeIf { sameContent(it, file) }
             runOnUiThread {
-                if (generation == updateGeneration && !isFinishing && !isDestroyed) startInstaller(file, publicUri)
+                if (generation == updateGeneration && !isFinishing && !isDestroyed) {
+                    if (trySilentInstall(file)) {
+                        UpdateAvailability.recordInstall(applicationContext, System.currentTimeMillis(), "sotainstaller silent")
+                        android.widget.Toast.makeText(this@DiPlayActivity, getString(R.string.silent_install_dispatched), android.widget.Toast.LENGTH_LONG).show()
+                    } else {
+                        startInstaller(file, publicUri)
+                    }
+                }
             }
         })
     }
@@ -5624,6 +5649,89 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
                 android.widget.Toast.makeText(this, getString(R.string.wifi_country_code_reloaded), android.widget.Toast.LENGTH_SHORT).show()
             }
         }, "diplay-reload-wifi-country").start()
+    }
+
+    private fun scanUsbApks() {
+        val searchDirs = listOf(
+            File("/mnt/udisk"),
+            File("/mnt/udisk1"),
+            File("/mnt/usb"),
+            File("/storage/udisk"),
+            File("/storage/usb1"),
+            File("/mnt/media_rw"),
+            File(android.os.Environment.getExternalStorageDirectory(), "Download"),
+            File(android.os.Environment.getExternalStorageDirectory(), "Download/DiPlay"),
+        )
+        val apks = mutableListOf<File>()
+        for (dir in searchDirs) {
+            runCatching {
+                if (dir.exists() && dir.isDirectory) {
+                    dir.listFiles { f -> f.isFile && f.extension.equals("apk", ignoreCase = true) }?.let {
+                        apks.addAll(it)
+                    }
+                }
+            }
+        }
+        val distinctApks = apks.distinctBy { it.absolutePath }
+        if (distinctApks.isEmpty()) {
+            android.app.AlertDialog.Builder(this)
+                .setTitle(R.string.settings_scan_usb_apks)
+                .setMessage(R.string.scan_usb_apks_none_found)
+                .setPositiveButton(R.string.common_ok, null)
+                .show()
+            return
+        }
+        val names = distinctApks.map {
+            val sizeMb = it.length() / (1024.0 * 1024.0)
+            "${it.name} (${String.format(java.util.Locale.US, "%.1f MB", sizeMb)})"
+        }.toTypedArray()
+        android.app.AlertDialog.Builder(this)
+            .setTitle(R.string.settings_scan_usb_apks)
+            .setItems(names) { _, which ->
+                installApk(distinctApks[which])
+            }
+            .setNegativeButton(R.string.common_cancel, null)
+            .show()
+    }
+
+    private fun enableWirelessAdb() {
+        Thread({
+            // 1. Configure adb tcp port 5555 via Settings.Global
+            runCatching {
+                Settings.Global.putInt(contentResolver, "adb_port", 5555)
+            }
+            // 2. Invoke Pioneer native n_setADBonNET via reflection if present
+            runCatching {
+                val proxyClass = Class.forName("jp.pioneer.ceam.widget.DebugModeServiceProxy.DebugModeServiceProxy")
+                val getInstance = proxyClass.getMethod("getInstance")
+                val instance = getInstance.invoke(null)
+                val setAdbNet = proxyClass.getMethod("n_setADBonNET", Int::class.javaPrimitiveType)
+                setAdbNet.isAccessible = true
+                setAdbNet.invoke(instance, 1)
+            }
+            // 3. Find active non-loopback IPv4 addresses
+            val ips = runCatching {
+                java.net.NetworkInterface.getNetworkInterfaces().toList()
+                    .flatMap { it.inetAddresses.toList() }
+                    .filter { !it.isLoopbackAddress && it is java.net.Inet4Address }
+                    .map { it.hostAddress }
+            }.getOrDefault(emptyList())
+
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                val (title, message) = if (ips.isNotEmpty()) {
+                    val commands = ips.joinToString("\n") { "adb connect $it:5555" }
+                    getString(R.string.settings_enable_wireless_adb) to getString(R.string.wireless_adb_enabled_message, commands)
+                } else {
+                    getString(R.string.settings_enable_wireless_adb) to getString(R.string.wireless_adb_enabled_no_ip)
+                }
+                android.app.AlertDialog.Builder(this)
+                    .setTitle(title)
+                    .setMessage(message)
+                    .setPositiveButton(R.string.common_ok, null)
+                    .show()
+            }
+        }, "diplay-enable-wireless-adb").start()
     }
 
     private fun exportDiagnostics(uri: Uri? = null) {

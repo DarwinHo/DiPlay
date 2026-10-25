@@ -979,4 +979,14 @@
     <string name="settings_reload_wifi_country_code">Wi-Fi国コードをUSに再設定</string>
     <string name="settings_reload_wifi_country_code_description">Wi-Fi国コードを動的にUSへ再読み込みし、5 GHz帯の送信制限を解除して5GテザリングとP2Pを有効化します。</string>
     <string name="wifi_country_code_reloaded">Wi-Fi国コードをUSに再設定しました</string>
+    <string name="settings_scan_usb_apks">USBメモリからAPKを検索・インストール</string>
+    <string name="settings_scan_usb_apks_description">接続されたUSBメモリ（/mnt/udisk）内のAPKを検索し、直接インストールします。</string>
+    <string name="scan_usb_apks_none_found">USBストレージ（/mnt/udisk）内にAPKパッケージが見つかりませんでした。FAT32形式のUSBメモリが接続されているか確認してください。</string>
+    <string name="settings_enable_wireless_adb">ワイヤレスADBを有効化（ポート5555）</string>
+    <string name="settings_enable_wireless_adb_description">ポート5555でADBネットワーク接続を開始し、PCからWi-Fi経由でデバッグできるようにします。物理USBポートはiPhone専用に維持されます。</string>
+    <string name="wireless_adb_enabled_message">ワイヤレスADBポート5555が有効になりました。PC（同じWi-Fiに接続）のターミナルで実行してください：
+
+%1$s</string>
+    <string name="wireless_adb_enabled_no_ip">ワイヤレスADBポート5555が設定されました。車載端末をWi-Fiに接続してIPアドレスを取得してください。</string>
+    <string name="silent_install_dispatched">サイレントインストールを開始しました。アプリはバックグラウンドで更新され、自動的に再起動します。</string>
 </resources>

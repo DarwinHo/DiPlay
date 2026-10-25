@@ -980,4 +980,14 @@
     <string name="settings_reload_wifi_country_code">Reload Wi-Fi country code (US)</string>
     <string name="settings_reload_wifi_country_code_description">Dynamically reload Wi-Fi regulatory country code to US to unlock 5 GHz channels for hotspot and Wi-Fi Direct.</string>
     <string name="wifi_country_code_reloaded">Wi-Fi country code reloaded to US</string>
+    <string name="settings_scan_usb_apks">Scan and install APK from USB</string>
+    <string name="settings_scan_usb_apks_description">Scan /mnt/udisk for APK files on the connected USB flash drive and install directly.</string>
+    <string name="scan_usb_apks_none_found">No APK installation packages found on USB storage (/mnt/udisk). Please ensure a FAT32 USB drive is plugged into the car data port.</string>
+    <string name="settings_enable_wireless_adb">Enable wireless ADB (port 5555)</string>
+    <string name="settings_enable_wireless_adb_description">Start ADB network listening on port 5555 to debug wirelessly and keep the physical USB port for iPhone.</string>
+    <string name="wireless_adb_enabled_message">Wireless ADB port 5555 is enabled. On your computer (connected to the same Wi-Fi), run:
+
+%1$s</string>
+    <string name="wireless_adb_enabled_no_ip">Wireless ADB port 5555 is configured. Connect the head unit to Wi-Fi to obtain an IP address.</string>
+    <string name="silent_install_dispatched">Silent install dispatched. The app will update and relaunch automatically.</string>
 </resources>

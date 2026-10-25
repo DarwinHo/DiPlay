@@ -29,4 +29,9 @@ class UsbChargingCurrentTest {
         AirPlayPersistence.saveUsbChargingCurrent(context, UsbChargingCurrent.LOW)
         assertEquals(UsbChargingCurrent.LOW, AirPlayPersistence.loadUsbChargingCurrent(context))
     }
+
+    @Config(sdk = [25])
+    @Test fun defaultsToLowOnApi25ToPreventOverCurrent() {
+        assertEquals(UsbChargingCurrent.LOW, AirPlayPersistence.loadUsbChargingCurrent(context))
+    }
 }

@@ -937,4 +937,14 @@
     <string name="settings_reload_wifi_country_code">重載 Wi-Fi 國家碼為 US</string>
     <string name="settings_reload_wifi_country_code_description">將 Wi-Fi 國家碼動態重載為 US，解除車載 5 GHz 頻段發射限制以啟用 5G 熱點與 P2P。</string>
     <string name="wifi_country_code_reloaded">Wi-Fi 國家碼已重載為 US</string>
+    <string name="settings_scan_usb_apks">從隨身碟安裝應用程式</string>
+    <string name="settings_scan_usb_apks_description">自動掃描插在中央扶手隨身碟（/mnt/udisk）中的 APK 並直接安裝。</string>
+    <string name="scan_usb_apks_none_found">未在隨身碟（/mnt/udisk）中檢測到 APK 安裝包。請確認 FAT32 格式隨身碟已插入中央扶手數據埠。</string>
+    <string name="settings_enable_wireless_adb">開啟無線網路 ADB (連接埠 5555)</string>
+    <string name="settings_enable_wireless_adb_description">開啟 5555 連接埠網路除錯，電腦可透過 Wi-Fi 無線連線，實體 USB 埠永久留給 iPhone。</string>
+    <string name="wireless_adb_enabled_message">無線 ADB 除錯連接埠 5555 已設定。請在電腦終端機（需與車機處於同一 Wi-Fi）執行：
+
+%1$s</string>
+    <string name="wireless_adb_enabled_no_ip">無線 ADB 除錯連接埠 5555 已設定。請先將車機連線至 Wi-Fi 取得 IP 位址。</string>
+    <string name="silent_install_dispatched">已提交無感安裝。應用程式將在背景更新後自動重新啟動。</string>
 </resources>

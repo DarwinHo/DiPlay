@@ -937,4 +937,14 @@
     <string name="settings_reload_wifi_country_code">重载 Wi-Fi 国家码为 US</string>
     <string name="settings_reload_wifi_country_code_description">将 Wi-Fi 国家码动态重载为 US，解除车载 5 GHz 频段发射限制以激活 5G 热点与 P2P。</string>
     <string name="wifi_country_code_reloaded">Wi-Fi 国家码已重载为 US</string>
+    <string name="settings_scan_usb_apks">从 U 盘安装应用</string>
+    <string name="settings_scan_usb_apks_description">自动扫描插在扶手箱 U 盘（/mnt/udisk）中的 APK 并直接安装。</string>
+    <string name="scan_usb_apks_none_found">未在 U 盘（/mnt/udisk）中检测到 APK 安装包。请确认 FAT32 格式 U 盘已插入扶手箱数据口。</string>
+    <string name="settings_enable_wireless_adb">开启无线网络 ADB (端口 5555)</string>
+    <string name="settings_enable_wireless_adb_description">开启 5555 端口网络调试，电脑可通过 Wi-Fi 无线连接，物理 USB 口永久留给 iPhone。</string>
+    <string name="wireless_adb_enabled_message">无线 ADB 调试端口 5555 已配置。请在电脑终端（需与车机处于同一 Wi-Fi）运行：
+
+%1$s</string>
+    <string name="wireless_adb_enabled_no_ip">无线 ADB 调试端口 5555 已配置。请先将车机连接到 Wi-Fi 获取 IP 地址。</string>
+    <string name="silent_install_dispatched">已提交静默安装。应用将在后台更新后自动重新启动。</string>
 </resources>
