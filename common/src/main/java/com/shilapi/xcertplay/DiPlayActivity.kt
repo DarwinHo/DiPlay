@@ -5590,12 +5590,12 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
     private fun reloadWifiCountryCode() {
         val country = "US"
         Thread({
-            // 1. Write system global setting
+            // 1. Write system global setting using string key "wifi_country_code"
             runCatching {
-                Settings.Global.putString(contentResolver, Settings.Global.WIFI_COUNTRY_CODE, country)
+                Settings.Global.putString(contentResolver, "wifi_country_code", country)
             }
             // 2. Invoke WifiManager hidden setCountryCode via reflection
-            val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
+            val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE)
             if (wifiManager != null) {
                 runCatching {
                     val m1 = wifiManager.javaClass.getMethod("setCountryCode", String::class.java, Boolean::class.javaPrimitiveType)
