@@ -1755,6 +1755,8 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
             card.addView(label(getString(R.string.settings_open_android_settings_description), 14, MUTED).apply { setPadding(0, dp(8), 0, 0) })
             card.addView(button(getString(R.string.settings_open_pioneer_maintenance), false) { openPioneerMaintenance() }, matchButton(10, 60))
             card.addView(label(getString(R.string.settings_open_pioneer_maintenance_description), 14, MUTED).apply { setPadding(0, dp(8), 0, 0) })
+            card.addView(button(getString(R.string.settings_reload_wifi_country_code), false) { reloadWifiCountryCode() }, matchButton(10, 60))
+            card.addView(label(getString(R.string.settings_reload_wifi_country_code_description), 14, MUTED).apply { setPadding(0, dp(8), 0, 0) })
             toggle(card, getString(R.string.settings_fps_counter), getString(R.string.settings_fps_counter_description),
                 AirPlayPersistence.loadFpsCounter(this)) { AirPlayPersistence.saveFpsCounter(this, it) }
         }
@@ -5583,6 +5585,45 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
             } catch (_: Exception) {
             }
         }
+    }
+
+    private fun reloadWifiCountryCode() {
+        val country = "US"
+        Thread({
+            // 1. Write system global setting
+            runCatching {
+                Settings.Global.putString(contentResolver, Settings.Global.WIFI_COUNTRY_CODE, country)
+            }
+            // 2. Invoke WifiManager hidden setCountryCode via reflection
+            val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
+            if (wifiManager != null) {
+                runCatching {
+                    val m1 = wifiManager.javaClass.getMethod("setCountryCode", String::class.java, Boolean::class.javaPrimitiveType)
+                    m1.isAccessible = true
+                    m1.invoke(wifiManager, country, true)
+                }
+                runCatching {
+                    val m2 = wifiManager.javaClass.getMethod("setCountryCode", String::class.java)
+                    m2.isAccessible = true
+                    m2.invoke(wifiManager, country)
+                }
+            }
+            // 3. Send command to wpa_supplicant control socket if reachable
+            val sockets = listOf("/data/misc/wifi/sockets/wlan0", "/data/misc/wifi/sockets/wpa_wlan0_cmd")
+            for (path in sockets) {
+                runCatching {
+                    android.net.LocalSocket().use { s ->
+                        s.connect(android.net.LocalSocketAddress(path, android.net.LocalSocketAddress.Namespace.FILESYSTEM))
+                        s.outputStream.write("DRIVER COUNTRY $country\n".toByteArray(Charsets.UTF_8))
+                        s.outputStream.flush()
+                    }
+                }
+            }
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                android.widget.Toast.makeText(this, getString(R.string.wifi_country_code_reloaded), android.widget.Toast.LENGTH_SHORT).show()
+            }
+        }, "diplay-reload-wifi-country").start()
     }
 
     private fun exportDiagnostics(uri: Uri? = null) {

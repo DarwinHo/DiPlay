@@ -874,4 +874,7 @@
     <string name="settings_open_android_settings_description">Abre los ajustes completos de Android para configurar Wi-Fi, opciones de desarrollador y aplicaciones.</string>
     <string name="settings_open_pioneer_maintenance">Abrir lista de mantenimiento de Pioneer</string>
     <string name="settings_open_pioneer_maintenance_description">Abre directamente el menú de ingeniería de la unidad Pioneer para configurar ADB por USB, monitor de CPU y diagnósticos del sistema sin contraseña.</string>
+    <string name="settings_reload_wifi_country_code">Recargar código de país Wi-Fi (US)</string>
+    <string name="settings_reload_wifi_country_code_description">Recarga dinámicamente el código de país Wi-Fi a US para desbloquear canales de 5 GHz para zona Wi-Fi y Wi-Fi Direct.</string>
+    <string name="wifi_country_code_reloaded">Código de país Wi-Fi recargado a US</string>
 </resources>

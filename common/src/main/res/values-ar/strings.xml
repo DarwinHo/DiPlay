@@ -923,4 +923,7 @@
     <string name="settings_open_android_settings_description">افتح إعدادات أندرويد الكاملة للنظام لتكوين Wi-Fi وخيارات المطور والتطبيقات.</string>
     <string name="settings_open_pioneer_maintenance">فتح قائمة صيانة بايونير</string>
     <string name="settings_open_pioneer_maintenance_description">افتح مباشرة قائمة هندسة بايونير لتكوين تصحيح أخطاء ADB عبر USB ومراقبة وحدة المعالجة المركزية وتشخيص النظام دون كلمة مرور.</string>
+    <string name="settings_reload_wifi_country_code">إعادة تحميل رمز دولة Wi-Fi (US)</string>
+    <string name="settings_reload_wifi_country_code_description">إعادة تحميل رمز دولة Wi-Fi ديناميكيًا إلى US لفتح قنوات 5 جيجاهرتز لنقطة الاتصال وWi-Fi Direct.</string>
+    <string name="wifi_country_code_reloaded">تمت إعادة تحميل رمز دولة Wi-Fi إلى US</string>
 </resources>

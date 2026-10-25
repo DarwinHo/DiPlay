@@ -976,4 +976,7 @@
     <string name="settings_open_android_settings_description">システム標準のAndroid設定を開き、Wi-Fi、開発者向けオプション、アプリを管理します。</string>
     <string name="settings_open_pioneer_maintenance">パイオニア保守メニューを開く</string>
     <string name="settings_open_pioneer_maintenance_description">パスワード入力なしでパイオニア純正のMaintenance List（保守メニュー）を開き、ADB on USBやCPU監視、システム診断を設定します。</string>
+    <string name="settings_reload_wifi_country_code">Wi-Fi国コードをUSに再設定</string>
+    <string name="settings_reload_wifi_country_code_description">Wi-Fi国コードを動的にUSへ再読み込みし、5 GHz帯の送信制限を解除して5GテザリングとP2Pを有効化します。</string>
+    <string name="wifi_country_code_reloaded">Wi-Fi国コードをUSに再設定しました</string>
 </resources>

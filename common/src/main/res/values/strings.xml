@@ -977,4 +977,7 @@
     <string name="settings_open_android_settings_description">Open the system full Android settings to configure Wi-Fi, developer options and apps.</string>
     <string name="settings_open_pioneer_maintenance">Open Pioneer maintenance list</string>
     <string name="settings_open_pioneer_maintenance_description">Directly open Pioneer head-unit engineering menu to configure ADB on USB, CPU usage monitor and system diagnostics without entering the password.</string>
+    <string name="settings_reload_wifi_country_code">Reload Wi-Fi country code (US)</string>
+    <string name="settings_reload_wifi_country_code_description">Dynamically reload Wi-Fi regulatory country code to US to unlock 5 GHz channels for hotspot and Wi-Fi Direct.</string>
+    <string name="wifi_country_code_reloaded">Wi-Fi country code reloaded to US</string>
 </resources>

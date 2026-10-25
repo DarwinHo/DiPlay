@@ -934,4 +934,7 @@
     <string name="settings_open_android_settings_description">打开系统完整的安卓设置，可配置 Wi-Fi、开发者选项及应用管理。</string>
     <string name="settings_open_pioneer_maintenance">打开先锋工程维护菜单</string>
     <string name="settings_open_pioneer_maintenance_description">直接唤起先锋车机原厂 Maintenance List 工程菜单，免密配置 ADB On USB、CPU 监视及硬件诊断。</string>
+    <string name="settings_reload_wifi_country_code">重载 Wi-Fi 国家码为 US</string>
+    <string name="settings_reload_wifi_country_code_description">将 Wi-Fi 国家码动态重载为 US，解除车载 5 GHz 频段发射限制以激活 5G 热点与 P2P。</string>
+    <string name="wifi_country_code_reloaded">Wi-Fi 国家码已重载为 US</string>
 </resources>

@@ -886,4 +886,7 @@
     <string name="settings_open_android_settings_description">Відкрити повні налаштування Android для налаштування Wi-Fi, параметрів розробника та додатків.</string>
     <string name="settings_open_pioneer_maintenance">Відкрити меню обслуговування Pioneer</string>
     <string name="settings_open_pioneer_maintenance_description">Прямий доступ до інженерного меню Pioneer (Maintenance List) для налаштування ADB через USB, моніторингу ЦП та системної діагностики без введення пароля.</string>
+    <string name="settings_reload_wifi_country_code">Перезавантажити код країни Wi-Fi (US)</string>
+    <string name="settings_reload_wifi_country_code_description">Динамічно перезавантажити код країни Wi-Fi на US для розблокування каналів 5 ГГц для точки доступу та Wi-Fi Direct.</string>
+    <string name="wifi_country_code_reloaded">Код країни Wi-Fi перезавантажено на US</string>
 </resources>
