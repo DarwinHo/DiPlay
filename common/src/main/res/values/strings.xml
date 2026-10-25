@@ -975,4 +975,6 @@
     <string name="settings_open_file_manager_description">Open the head unit\'s built-in file manager to browse USB drives and install apps.</string>
     <string name="settings_open_android_settings">Open Android settings</string>
     <string name="settings_open_android_settings_description">Open the system full Android settings to configure Wi-Fi, developer options and apps.</string>
+    <string name="settings_open_pioneer_maintenance">Open Pioneer maintenance list</string>
+    <string name="settings_open_pioneer_maintenance_description">Directly open Pioneer head-unit engineering menu to configure ADB on USB, CPU usage monitor and system diagnostics without entering the password.</string>
 </resources>

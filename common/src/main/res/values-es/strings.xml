@@ -872,4 +872,6 @@
     <string name="settings_open_file_manager_description">Abre el administrador de archivos integrado en la unidad principal para explorar memorias USB e instalar aplicaciones.</string>
     <string name="settings_open_android_settings">Abrir ajustes nativos de Android</string>
     <string name="settings_open_android_settings_description">Abre los ajustes completos de Android para configurar Wi-Fi, opciones de desarrollador y aplicaciones.</string>
+    <string name="settings_open_pioneer_maintenance">Abrir lista de mantenimiento de Pioneer</string>
+    <string name="settings_open_pioneer_maintenance_description">Abre directamente el menú de ingeniería de la unidad Pioneer para configurar ADB por USB, monitor de CPU y diagnósticos del sistema sin contraseña.</string>
 </resources>

@@ -932,4 +932,6 @@
     <string name="settings_open_file_manager_description">開啟車機內建的檔案管理器，可瀏覽隨身碟並直接安裝應用程式。</string>
     <string name="settings_open_android_settings">開啟安卓原生設定</string>
     <string name="settings_open_android_settings_description">開啟系統完整的安卓設定，可配置 Wi-Fi、開發者選項及應用程式管理。</string>
+    <string name="settings_open_pioneer_maintenance">開啟先鋒工程維護選單</string>
+    <string name="settings_open_pioneer_maintenance_description">直接喚起先鋒車機原廠 Maintenance List 工程選單，免密設定 ADB On USB、CPU 監視及硬體診斷。</string>
 </resources>

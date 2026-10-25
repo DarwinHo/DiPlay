@@ -884,4 +884,6 @@
     <string name="settings_open_file_manager_description">Відкрити вбудований диспетчер файлів головного пристрою для перегляду USB-накопичувачів та встановлення додатків.</string>
     <string name="settings_open_android_settings">Відкрити налаштування Android</string>
     <string name="settings_open_android_settings_description">Відкрити повні налаштування Android для налаштування Wi-Fi, параметрів розробника та додатків.</string>
+    <string name="settings_open_pioneer_maintenance">Відкрити меню обслуговування Pioneer</string>
+    <string name="settings_open_pioneer_maintenance_description">Прямий доступ до інженерного меню Pioneer (Maintenance List) для налаштування ADB через USB, моніторингу ЦП та системної діагностики без введення пароля.</string>
 </resources>

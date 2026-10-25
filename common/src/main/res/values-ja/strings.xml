@@ -974,4 +974,6 @@
     <string name="settings_open_file_manager_description">車載端末内蔵のファイルマネージャーを開き、USBメモリの閲覧やアプリのインストールを行います。</string>
     <string name="settings_open_android_settings">Android標準設定を開く</string>
     <string name="settings_open_android_settings_description">システム標準のAndroid設定を開き、Wi-Fi、開発者向けオプション、アプリを管理します。</string>
+    <string name="settings_open_pioneer_maintenance">パイオニア保守メニューを開く</string>
+    <string name="settings_open_pioneer_maintenance_description">パスワード入力なしでパイオニア純正のMaintenance List（保守メニュー）を開き、ADB on USBやCPU監視、システム診断を設定します。</string>
 </resources>

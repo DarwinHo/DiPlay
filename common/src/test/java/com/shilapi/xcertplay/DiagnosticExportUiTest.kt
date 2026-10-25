@@ -138,6 +138,26 @@ class DiagnosticExportUiTest {
         }
     }
 
+    @Test fun openPioneerMaintenanceLaunchesDebugModeMain() {
+        val controller = Robolectric.buildActivity(DiPlayActivity::class.java).setup()
+        val activity = controller.get()
+        try {
+            val content = LinearLayout(activity)
+            ReflectionHelpers.callInstanceMethod<Unit>(activity, "renderSections",
+                ReflectionHelpers.ClassParameter.from(LinearLayout::class.java, content),
+                ReflectionHelpers.ClassParameter.from(Set::class.java, setOf(SettingsSection.DIAGNOSTICS)))
+            val button = descendants(content).filterIsInstance<Button>()
+                .single { it.text == activity.getString(R.string.settings_open_pioneer_maintenance) }
+            button.performClick()
+            val intent = shadowOf(activity).nextStartedActivity
+            assertNotNull(intent)
+            assertEquals("android.intent.action.DEBUGMODEMAIN", intent.action)
+            assertTrue((intent.flags and Intent.FLAG_ACTIVITY_NEW_TASK) != 0)
+        } finally {
+            controller.pause().stop().destroy()
+        }
+    }
+
     private fun descendants(view: View): Sequence<View> = sequence {
         yield(view)
         if (view is ViewGroup) for (index in 0 until view.childCount) yieldAll(descendants(view.getChildAt(index)))

@@ -1753,6 +1753,8 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
             card.addView(label(getString(R.string.settings_open_file_manager_description), 14, MUTED).apply { setPadding(0, dp(8), 0, 0) })
             card.addView(button(getString(R.string.settings_open_android_settings), false) { openAndroidSettings() }, matchButton(10, 60))
             card.addView(label(getString(R.string.settings_open_android_settings_description), 14, MUTED).apply { setPadding(0, dp(8), 0, 0) })
+            card.addView(button(getString(R.string.settings_open_pioneer_maintenance), false) { openPioneerMaintenance() }, matchButton(10, 60))
+            card.addView(label(getString(R.string.settings_open_pioneer_maintenance_description), 14, MUTED).apply { setPadding(0, dp(8), 0, 0) })
             toggle(card, getString(R.string.settings_fps_counter), getString(R.string.settings_fps_counter_description),
                 AirPlayPersistence.loadFpsCounter(this)) { AirPlayPersistence.saveFpsCounter(this, it) }
         }
@@ -5553,8 +5555,26 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
     private fun openAndroidSettings() {
         val candidates = listOf(
             Intent(Settings.ACTION_SETTINGS),
+            Intent("jp.pioneer.ceam.settingsdevelop.APPLICATION_DEVELOPMENT_SETTINGS"),
+            Intent().setComponent(ComponentName("jp.pioneer.ceam.settingsdevelop", "jp.pioneer.ceam.settingsdevelop.DevelopmentSettings")),
             Intent().setComponent(ComponentName("com.android.settings", "com.android.settings.Settings")),
             Intent(Settings.ACTION_DEVICE_INFO_SETTINGS),
+        )
+        for (intent in candidates) {
+            try {
+                startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                return
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    private fun openPioneerMaintenance() {
+        val candidates = listOf(
+            Intent("android.intent.action.DEBUGMODEMAIN"),
+            Intent().setComponent(ComponentName("jp.pioneer.ceam.setting", "jp.pioneer.ceam.setting.debugmode.DebugModeActivity")),
+            Intent("jp.pioneer.ceam.settingsdevelop.APPLICATION_DEVELOPMENT_SETTINGS"),
+            Intent().setComponent(ComponentName("jp.pioneer.ceam.TestMode", "jp.pioneer.ceam.TestMode.main")),
         )
         for (intent in candidates) {
             try {
