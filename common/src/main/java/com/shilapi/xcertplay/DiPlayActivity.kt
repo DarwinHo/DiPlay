@@ -5676,27 +5676,116 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
     }
 
     private fun scanUsbApks() {
-        val searchDirs = listOf(
-            File("/mnt/udisk"),
-            File("/mnt/udisk1"),
-            File("/mnt/usb"),
-            File("/storage/udisk"),
-            File("/storage/usb1"),
-            File("/mnt/media_rw"),
-            File(android.os.Environment.getExternalStorageDirectory(), "Download"),
-            File(android.os.Environment.getExternalStorageDirectory(), "Download/DiPlay"),
+        val candidateDirs = mutableSetOf<File>()
+
+        // 1. Common OEM & Android mount points
+        val hardcoded = listOf(
+            "/mnt/udisk", "/mnt/udisk1", "/mnt/udisk2",
+            "/udisk", "/udisk1", "/udisk2",
+            "/mnt/usb", "/mnt/usb1", "/mnt/usb2", "/mnt/usbdisk",
+            "/storage/udisk", "/storage/usb", "/storage/usb1",
+            "/mnt/media_rw",
+            android.os.Environment.getExternalStorageDirectory()?.path,
+            android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS)?.path,
+            File(android.os.Environment.getExternalStorageDirectory(), "Download/DiPlay").path
         )
-        val apks = mutableListOf<File>()
-        for (dir in searchDirs) {
-            runCatching {
-                if (dir.exists() && dir.isDirectory) {
-                    dir.listFiles { f -> f.isFile && f.extension.equals("apk", ignoreCase = true) }?.let {
-                        apks.addAll(it)
+        for (path in hardcoded) {
+            if (path != null) candidateDirs.add(File(path))
+        }
+
+        // 2. Discover active mount points dynamically from /proc/mounts
+        runCatching {
+            File("/proc/mounts").forEachLine { line ->
+                val tokens = line.split("\\s+".toRegex())
+                if (tokens.size >= 3) {
+                    val mountPoint = tokens[1]
+                    val isStorage = mountPoint.startsWith("/storage/") && mountPoint != "/storage/emulated" && mountPoint != "/storage/self"
+                    val isUsb = mountPoint.contains("udisk", ignoreCase = true) ||
+                                mountPoint.contains("usb", ignoreCase = true) ||
+                                mountPoint.startsWith("/mnt/media_rw/") ||
+                                mountPoint.startsWith("/udisk")
+                    if (isStorage || isUsb) {
+                        candidateDirs.add(File(mountPoint))
                     }
                 }
             }
         }
-        val distinctApks = apks.distinctBy { it.absolutePath }
+
+        // 3. Inspect secondary external storage volumes registered by Android
+        runCatching {
+            getExternalFilesDirs(null)?.forEach { file ->
+                var curr: File? = file
+                while (curr != null) {
+                    if (curr.parentFile?.path == "/storage" || curr.parentFile?.path == "/mnt/media_rw") {
+                        candidateDirs.add(curr)
+                        break
+                    }
+                    curr = curr.parentFile
+                }
+            }
+        }
+
+        // 4. Also inspect direct subdirectories of /mnt/media_rw, /storage, and /mnt
+        listOf(File("/mnt/media_rw"), File("/storage"), File("/mnt")).forEach { root ->
+            runCatching {
+                if (root.exists() && root.isDirectory) {
+                    root.listFiles { f -> f.isDirectory && !f.name.startsWith(".") && f.name != "emulated" && f.name != "self" }?.forEach {
+                        candidateDirs.add(it)
+                    }
+                }
+            }
+        }
+
+        // 5. Deep recursive search (depth <= 3) for .apk files
+        fun searchApks(dir: File, depth: Int): List<File> {
+            if (depth > 3 || !dir.exists() || !dir.isDirectory) return emptyList()
+            val list = mutableListOf<File>()
+            val entries = runCatching { dir.listFiles() }.getOrNull() ?: return emptyList()
+            for (entry in entries) {
+                if (entry.isFile && entry.extension.equals("apk", ignoreCase = true)) {
+                    list.add(entry)
+                } else if (entry.isDirectory && !entry.name.startsWith(".") && depth < 3) {
+                    list.addAll(searchApks(entry, depth + 1))
+                }
+            }
+            return list
+        }
+
+        val apks = mutableListOf<File>()
+        for (dir in candidateDirs) {
+            apks.addAll(searchApks(dir, 0))
+        }
+
+        // 6. Root fallback: If standard Java file listing is blocked by Linux DAC (e.g. media_rw GID),
+        // use Pioneer root to find all APKs under /mnt, /storage, /udisk and copy to /data/local/tmp/
+        if (apks.isEmpty()) {
+            runCatching {
+                val findCmd = "find /mnt /storage /udisk* -maxdepth 4 -name '*.apk' 2>/dev/null > /data/local/tmp/found_apks.txt && chmod 666 /data/local/tmp/found_apks.txt"
+                val proxyClass = Class.forName("jp.pioneer.ceam.widget.DebugModeServiceProxy.DebugModeServiceProxy")
+                val instance = proxyClass.getMethod("getInstance").invoke(null)
+                val systemcall = proxyClass.getMethod("systemcall", String::class.java)
+                systemcall.isAccessible = true
+                systemcall.invoke(instance, findCmd)
+                Thread.sleep(300)
+                val foundFile = File("/data/local/tmp/found_apks.txt")
+                if (foundFile.exists()) {
+                    foundFile.readLines().map { it.trim() }.filter { it.isNotEmpty() }.forEach { path ->
+                        val f = File(path)
+                        if (f.exists() && f.canRead()) {
+                            apks.add(f)
+                        } else {
+                            val dest = File("/data/local/tmp", f.name)
+                            val copyCmd = "cp \"$path\" /data/local/tmp/ && chmod 644 \"${dest.absolutePath}\""
+                            systemcall.invoke(instance, copyCmd)
+                            Thread.sleep(200)
+                            if (dest.exists()) apks.add(dest)
+                        }
+                    }
+                }
+            }
+        }
+
+        val distinctApks = apks.distinctBy { it.name + it.length() }
         if (distinctApks.isEmpty()) {
             android.app.AlertDialog.Builder(this)
                 .setTitle(R.string.settings_scan_usb_apks)
