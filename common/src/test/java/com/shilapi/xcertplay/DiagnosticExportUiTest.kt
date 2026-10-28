@@ -229,6 +229,40 @@ class DiagnosticExportUiTest {
         }
     }
 
+    @Test fun mountP2pPatchRendersAndCanBeClicked() {
+        val controller = Robolectric.buildActivity(DiPlayActivity::class.java).setup()
+        val activity = controller.get()
+        try {
+            val content = LinearLayout(activity)
+            ReflectionHelpers.callInstanceMethod<Unit>(activity, "renderSections",
+                ReflectionHelpers.ClassParameter.from(LinearLayout::class.java, content),
+                ReflectionHelpers.ClassParameter.from(Set::class.java, setOf(SettingsSection.DIAGNOSTICS)))
+            val button = descendants(content).filterIsInstance<Button>()
+                .single { it.text == activity.getString(R.string.settings_mount_p2p_patch) }
+            button.performClick()
+            shadowOf(Looper.getMainLooper()).idle()
+        } finally {
+            controller.pause().stop().destroy()
+        }
+    }
+
+    @Test fun unmountP2pPatchRendersAndCanBeClicked() {
+        val controller = Robolectric.buildActivity(DiPlayActivity::class.java).setup()
+        val activity = controller.get()
+        try {
+            val content = LinearLayout(activity)
+            ReflectionHelpers.callInstanceMethod<Unit>(activity, "renderSections",
+                ReflectionHelpers.ClassParameter.from(LinearLayout::class.java, content),
+                ReflectionHelpers.ClassParameter.from(Set::class.java, setOf(SettingsSection.DIAGNOSTICS)))
+            val button = descendants(content).filterIsInstance<Button>()
+                .single { it.text == activity.getString(R.string.settings_unmount_p2p_patch) }
+            button.performClick()
+            shadowOf(Looper.getMainLooper()).idle()
+        } finally {
+            controller.pause().stop().destroy()
+        }
+    }
+
     private fun descendants(view: View): Sequence<View> = sequence {
         yield(view)
         if (view is ViewGroup) for (index in 0 until view.childCount) yieldAll(descendants(view.getChildAt(index)))

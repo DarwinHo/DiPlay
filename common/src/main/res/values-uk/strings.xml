@@ -909,4 +909,13 @@
     <string name="pioneer_root_test_success_non_root">Виконано успішно, але без прав root:
 %1$s</string>
     <string name="pioneer_root_test_no_file">Команду надіслано (відповідь: %1$s), але вихідний файл не створено.</string>
+    <string name="settings_mount_p2p_patch">Змонтувати та увімкнути Wi-Fi Direct (у пам\'яті)</string>
+    <string name="settings_mount_p2p_patch_description">Монтує патч P2P у пам\'ять через Pioneer root і перезавантажує служби для розблокування Wi-Fi Direct (без запису у флеш, скидання після перезавантаження).</string>
+    <string name="settings_unmount_p2p_patch">Розмонтувати та відновити заводський Wi-Fi</string>
+    <string name="settings_unmount_p2p_patch_description">Розмонтує файл з пам\'яті та перезавантажує служби для миттєвого повернення до заводського стану.</string>
+    <string name="p2p_patch_file_missing">Файл wifi-service-p2p.odex не знайдено в /data/local/tmp/. Спочатку завантажте його через ADB.</string>
+    <string name="p2p_patch_mount_success">Команду монтування в пам\'ять надіслано! Служби системи перезавантажуються.</string>
+    <string name="p2p_patch_mount_failed">Не вдалося надіслати команду монтування. Перевірте права Pioneer root.</string>
+    <string name="p2p_patch_unmount_success">Патч успішно розмонтовано, заводський Wi-Fi відновлено!</string>
+    <string name="p2p_patch_unmount_failed">Не вдалося надіслати команду розмонтування. Перевірте права Pioneer root.</string>
 </resources>

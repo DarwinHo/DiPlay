@@ -999,4 +999,13 @@
     <string name="pioneer_root_test_success_non_root">実行に成功しましたが、Root権限ではありません：
 %1$s</string>
     <string name="pioneer_root_test_no_file">コマンドは送信されました（戻り値：%1$s）が、出力ファイルは生成されませんでした。</string>
+    <string name="settings_mount_p2p_patch">Wi-Fi Direct をメモリマウントして有効化</string>
+    <string name="settings_mount_p2p_patch_description">パイオニアRoot経由でP2Pパッチをメモリマウントしてサービスを再起動し、Wi-Fi Directを解除します（物理書き込みなし、再起動で復元）。</string>
+    <string name="settings_unmount_p2p_patch">マウント解除して純正Wi-Fi状態に復元</string>
+    <string name="settings_unmount_p2p_patch_description">メモリからパッチファイルをマウント解除してサービスを再起動し、純正出荷状態に即座に戻します。</string>
+    <string name="p2p_patch_file_missing">/data/local/tmp/ に wifi-service-p2p.odex が見つかりません。先にADBでプッシュしてください。</string>
+    <string name="p2p_patch_mount_success">メモリマウントコマンドを送信しました。システムサービスを再読み込み中です。</string>
+    <string name="p2p_patch_mount_failed">マウントコマンドの送信に失敗しました。パイオニアRoot権限を確認してください。</string>
+    <string name="p2p_patch_unmount_success">メモリパッチを正常にマウント解除し、純正Wi-Fi状態に復元しました！</string>
+    <string name="p2p_patch_unmount_failed">マウント解除コマンドの送信に失敗しました。パイオニアRoot権限を確認してください。</string>
 </resources>

@@ -946,4 +946,13 @@
     <string name="pioneer_root_test_success_non_root">نجح التنفيذ ولكن بدون صلاحيات root:
 %1$s</string>
     <string name="pioneer_root_test_no_file">تم إرسال الأمر (النتيجة: %1$s)، ولكن لم يتم إنشاء ملف المخرجات.</string>
+    <string name="settings_mount_p2p_patch">تثبيت وتفعيل Wi-Fi Direct (في الذاكرة)</string>
+    <string name="settings_mount_p2p_patch_description">ربط تصحيح P2P في الذاكرة عبر Pioneer root وإعادة تحميل الخدمات لفتح Wi-Fi Direct (بدون كتابة على القرص، يعود عند إعادة التشغيل).</string>
+    <string name="settings_unmount_p2p_patch">إلغاء التثبيت واستعادة Wi-Fi الأصلي</string>
+    <string name="settings_unmount_p2p_patch_description">إلغاء تثبيت الملف المعدل من الذاكرة وإعادة تحميل الخدمات للعودة فوراً إلى إعدادات المصنع.</string>
+    <string name="p2p_patch_file_missing">لم يتم العثور على wifi-service-p2p.odex في /data/local/tmp/. يرجى نقل الملف أولاً عبر ADB.</string>
+    <string name="p2p_patch_mount_success">تم إرسال أمر التثبيت بنجاح! جاري إعادة تحميل خدمات النظام.</string>
+    <string name="p2p_patch_mount_failed">فشل إرسال أمر التثبيت. يرجى التحقق من صلاحيات Pioneer root.</string>
+    <string name="p2p_patch_unmount_success">تم إلغاء تثبيت التصحيح بنجاح واستعادة Wi-Fi الأصلي!</string>
+    <string name="p2p_patch_unmount_failed">فشل إرسال أمر إلغاء التثبيت. يرجى التحقق من صلاحيات Pioneer root.</string>
 </resources>

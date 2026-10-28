@@ -957,4 +957,13 @@
     <string name="pioneer_root_test_success_non_root">執行成功，但非 Root 身份：
 %1$s</string>
     <string name="pioneer_root_test_no_file">指令已提交（返回值：%1$s），但未生成輸出檔案。</string>
+    <string name="settings_mount_p2p_patch">掛載並啟用 Wi-Fi Direct (免拆)</string>
+    <string name="settings_mount_p2p_patch_description">透過先鋒 Root 通道將 P2P 修補程式綁定掛載至記憶體並重啟服務，啟用原生 Wi-Fi Direct（零實體寫入，拔電/重啟完全恢復原廠）。</string>
+    <string name="settings_unmount_p2p_patch">卸載並恢復原廠 Wi-Fi 狀態</string>
+    <string name="settings_unmount_p2p_patch_description">從記憶體中卸載修補檔案並重啟服務，瞬間完全恢復原廠出廠狀態。</string>
+    <string name="p2p_patch_file_missing">未在車機 /data/local/tmp/ 找到 wifi-service-p2p.odex 修補檔案，請先透過 ADB 推送檔案。</string>
+    <string name="p2p_patch_mount_success">已成功發送記憶體掛載指令並重啟系統服務！</string>
+    <string name="p2p_patch_mount_failed">發送掛載指令失敗，請檢查先鋒底層權限。</string>
+    <string name="p2p_patch_unmount_success">已成功卸載記憶體修補並恢復原廠 Wi-Fi 狀態！</string>
+    <string name="p2p_patch_unmount_failed">發送卸載指令失敗，請檢查先鋒底層權限。</string>
 </resources>

@@ -1000,4 +1000,13 @@
     <string name="pioneer_root_test_success_non_root">Execution succeeded but without root:
 %1$s</string>
     <string name="pioneer_root_test_no_file">Command was submitted (return: %1$s), but no output file was generated.</string>
+    <string name="settings_mount_p2p_patch">Mount &amp; Enable Wi-Fi Direct (VFS)</string>
+    <string name="settings_mount_p2p_patch_description">Bind-mount the P2P patch in memory via Pioneer root and reload services to unlock Wi-Fi Direct (zero flash writes, reverts on reboot).</string>
+    <string name="settings_unmount_p2p_patch">Unmount &amp; Restore Stock Wi-Fi</string>
+    <string name="settings_unmount_p2p_patch_description">Unmount the patched file from memory and reload services to instantly revert to factory stock.</string>
+    <string name="p2p_patch_file_missing">wifi-service-p2p.odex not found in /data/local/tmp/. Please push the patch file via ADB first.</string>
+    <string name="p2p_patch_mount_success">Memory mount command sent successfully! System services are reloading.</string>
+    <string name="p2p_patch_mount_failed">Failed to send mount command. Please check Pioneer root channel.</string>
+    <string name="p2p_patch_unmount_success">Patch unmounted successfully. Restored to factory stock Wi-Fi!</string>
+    <string name="p2p_patch_unmount_failed">Failed to send unmount command. Please check Pioneer root channel.</string>
 </resources>

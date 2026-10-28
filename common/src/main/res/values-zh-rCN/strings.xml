@@ -957,4 +957,13 @@
     <string name="pioneer_root_test_success_non_root">执行成功，但非 Root 身份：
 %1$s</string>
     <string name="pioneer_root_test_no_file">指令已提交（返回值：%1$s），但未生成输出文件。</string>
+    <string name="settings_mount_p2p_patch">挂载并激活 Wi-Fi Direct (免拆)</string>
+    <string name="settings_mount_p2p_patch_description">通过先锋 Root 通道将 P2P 补丁绑定挂载到内存并软重启服务，激活原生 Wi-Fi Direct（零物理写入，拔电/重启完全恢复原厂）。</string>
+    <string name="settings_unmount_p2p_patch">卸载并恢复原厂 Wi-Fi 状态</string>
+    <string name="settings_unmount_p2p_patch_description">从内存中卸载补丁文件并软重启服务，瞬间完全恢复原厂出厂状态。</string>
+    <string name="p2p_patch_file_missing">未在车机 /data/local/tmp/ 找到 wifi-service-p2p.odex 补丁文件，请先通过 ADB 推送补丁文件。</string>
+    <string name="p2p_patch_mount_success">已成功下发内存挂载指令并软重启系统服务！</string>
+    <string name="p2p_patch_mount_failed">下发挂载指令失败，请检查先锋底层权限。</string>
+    <string name="p2p_patch_unmount_success">已成功卸载内存补丁并恢复原厂 Wi-Fi 状态！</string>
+    <string name="p2p_patch_unmount_failed">下发卸载指令失败，请检查先锋底层权限。</string>
 </resources>

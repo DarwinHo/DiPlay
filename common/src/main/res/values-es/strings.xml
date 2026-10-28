@@ -897,4 +897,13 @@
     <string name="pioneer_root_test_success_non_root">Ejecutado con éxito pero sin permisos de root:
 %1$s</string>
     <string name="pioneer_root_test_no_file">Comando enviado (retorno: %1$s), pero no se generó el archivo de salida.</string>
+    <string name="settings_mount_p2p_patch">Montar y activar Wi-Fi Direct (en memoria)</string>
+    <string name="settings_mount_p2p_patch_description">Monta el parche P2P en memoria mediante Pioneer root y recarga servicios para desbloquear Wi-Fi Direct (sin escritura física, revierte al reiniciar).</string>
+    <string name="settings_unmount_p2p_patch">Desmontar y restaurar Wi-Fi de fábrica</string>
+    <string name="settings_unmount_p2p_patch_description">Desmonta el archivo de la memoria y recarga servicios para volver al estado original de fábrica al instante.</string>
+    <string name="p2p_patch_file_missing">No se encontró wifi-service-p2p.odex en /data/local/tmp/. Transfiere el archivo mediante ADB primero.</string>
+    <string name="p2p_patch_mount_success">¡Comando de montaje en memoria enviado con éxito! Recargando servicios del sistema.</string>
+    <string name="p2p_patch_mount_failed">Error al enviar el comando de montaje. Comprueba los permisos de Pioneer root.</string>
+    <string name="p2p_patch_unmount_success">¡Parche desmontado con éxito y restaurado el estado de Wi-Fi de fábrica!</string>
+    <string name="p2p_patch_unmount_failed">Error al enviar el comando de desmontaje. Comprueba los permisos de Pioneer root.</string>
 </resources>

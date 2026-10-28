@@ -1763,6 +1763,10 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
             card.addView(label(getString(R.string.settings_enable_wireless_adb_description), 14, MUTED).apply { setPadding(0, dp(8), 0, 0) })
             card.addView(button(getString(R.string.settings_test_pioneer_root), false) { testPioneerRootChannel() }, matchButton(10, 60))
             card.addView(label(getString(R.string.settings_test_pioneer_root_description), 14, MUTED).apply { setPadding(0, dp(8), 0, 0) })
+            card.addView(button(getString(R.string.settings_mount_p2p_patch), false) { mountP2pPatch() }, matchButton(10, 60))
+            card.addView(label(getString(R.string.settings_mount_p2p_patch_description), 14, MUTED).apply { setPadding(0, dp(8), 0, 0) })
+            card.addView(button(getString(R.string.settings_unmount_p2p_patch), false) { unmountP2pPatch() }, matchButton(10, 60))
+            card.addView(label(getString(R.string.settings_unmount_p2p_patch_description), 14, MUTED).apply { setPadding(0, dp(8), 0, 0) })
             toggle(card, getString(R.string.settings_fps_counter), getString(R.string.settings_fps_counter_description),
                 AirPlayPersistence.loadFpsCounter(this)) { AirPlayPersistence.saveFpsCounter(this, it) }
         }
@@ -5608,10 +5612,26 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
         for (intent in candidates) {
             try {
                 startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                autoInputPioneerMaintenancePassword()
                 return
             } catch (_: Exception) {
             }
         }
+    }
+
+    private fun autoInputPioneerMaintenancePassword() {
+        Thread({
+            runCatching {
+                Thread.sleep(600)
+                val proxyClass = Class.forName("jp.pioneer.ceam.widget.DebugModeServiceProxy.DebugModeServiceProxy")
+                val getInstance = proxyClass.getMethod("getInstance")
+                val proxyInstance = getInstance.invoke(null)
+                val systemcall = proxyClass.getMethod("systemcall", String::class.java)
+                systemcall.isAccessible = true
+                val autoInputCmd = "input tap 590 125 && sleep 0.1 && input text piodevelopdbg && sleep 0.1 && input tap 955 125"
+                systemcall.invoke(proxyInstance, autoInputCmd)
+            }
+        }, "diplay-auto-pioneer-pw").start()
     }
 
     private fun reloadWifiCountryCode() {
@@ -5738,7 +5758,12 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
 
     private fun testPioneerRootChannel() {
         val testFile = File("/data/local/tmp/pioneer_root_test.txt")
-        val testCmd = "id > /data/local/tmp/pioneer_root_test.txt && chmod 666 /data/local/tmp/pioneer_root_test.txt"
+        val customScript = File("/data/local/tmp/pioneer_cmd.sh")
+        val testCmd = if (customScript.exists()) {
+            "sh /data/local/tmp/pioneer_cmd.sh > /data/local/tmp/pioneer_root_test.txt 2>&1 && chmod 666 /data/local/tmp/pioneer_root_test.txt"
+        } else {
+            "id > /data/local/tmp/pioneer_root_test.txt && chmod 666 /data/local/tmp/pioneer_root_test.txt"
+        }
         Thread({
             runCatching { if (testFile.exists()) testFile.delete() }
             val callResult = runCatching {
@@ -5780,6 +5805,61 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
                     .show()
             }
         }, "diplay-test-pioneer-root").start()
+    }
+
+    private fun mountP2pPatch() {
+        val patchFile = File("/data/local/tmp/wifi-service-p2p.odex")
+        if (!patchFile.exists()) {
+            android.app.AlertDialog.Builder(this)
+                .setTitle(R.string.settings_mount_p2p_patch)
+                .setMessage(R.string.p2p_patch_file_missing)
+                .setPositiveButton(android.R.string.ok, null)
+                .show()
+            return
+        }
+        val cmd = "mount -o bind /data/local/tmp/wifi-service-p2p.odex /system/framework/oat/arm/wifi-service.odex && pkill -f system_server"
+        Thread({
+            val callResult = runCatching {
+                val proxyClass = Class.forName("jp.pioneer.ceam.widget.DebugModeServiceProxy.DebugModeServiceProxy")
+                val getInstance = proxyClass.getMethod("getInstance")
+                val proxyInstance = getInstance.invoke(null)
+                val systemcall = proxyClass.getMethod("systemcall", String::class.java)
+                systemcall.isAccessible = true
+                systemcall.invoke(proxyInstance, cmd) as? Boolean ?: false
+            }
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                val msg = if (callResult.getOrDefault(false)) {
+                    getString(R.string.p2p_patch_mount_success)
+                } else {
+                    getString(R.string.p2p_patch_mount_failed)
+                }
+                android.widget.Toast.makeText(this, msg, android.widget.Toast.LENGTH_LONG).show()
+            }
+        }, "diplay-mount-p2p").start()
+    }
+
+    private fun unmountP2pPatch() {
+        val cmd = "umount /system/framework/oat/arm/wifi-service.odex && pkill -f system_server"
+        Thread({
+            val callResult = runCatching {
+                val proxyClass = Class.forName("jp.pioneer.ceam.widget.DebugModeServiceProxy.DebugModeServiceProxy")
+                val getInstance = proxyClass.getMethod("getInstance")
+                val proxyInstance = getInstance.invoke(null)
+                val systemcall = proxyClass.getMethod("systemcall", String::class.java)
+                systemcall.isAccessible = true
+                systemcall.invoke(proxyInstance, cmd) as? Boolean ?: false
+            }
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                val msg = if (callResult.getOrDefault(false)) {
+                    getString(R.string.p2p_patch_unmount_success)
+                } else {
+                    getString(R.string.p2p_patch_unmount_failed)
+                }
+                android.widget.Toast.makeText(this, msg, android.widget.Toast.LENGTH_LONG).show()
+            }
+        }, "diplay-unmount-p2p").start()
     }
 
     private fun exportDiagnostics(uri: Uri? = null) {
