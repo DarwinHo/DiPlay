@@ -955,4 +955,8 @@
     <string name="p2p_patch_mount_failed">فشل إرسال أمر التثبيت. يرجى التحقق من صلاحيات Pioneer root.</string>
     <string name="p2p_patch_unmount_success">تم إلغاء تثبيت التصحيح بنجاح واستعادة Wi-Fi الأصلي!</string>
     <string name="p2p_patch_unmount_failed">فشل إرسال أمر إلغاء التثبيت. يرجى التحقق من صلاحيات Pioneer root.</string>
+    <string name="settings_grant_vpn_permission">إصلاح إذن VPN للاتصال السلكي</string>
+    <string name="settings_grant_vpn_permission_description">السماح بـ ACTIVATE_VPN عبر Pioneer root لإزالة أخطاء تفويض VPN في الأجهزة التي تفتقر إلى VpnDialogs.</string>
+    <string name="vpn_permission_granted_success">تم منح إذن VPN بنجاح! CarPlay السلكي جاهز.</string>
+    <string name="vpn_permission_granted_failed">فشل منح إذن VPN. يرجى التحقق من صلاحيات Pioneer root.</string>
 </resources>

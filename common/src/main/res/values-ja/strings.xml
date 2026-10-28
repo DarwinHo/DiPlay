@@ -1008,4 +1008,8 @@
     <string name="p2p_patch_mount_failed">マウントコマンドの送信に失敗しました。パイオニアRoot権限を確認してください。</string>
     <string name="p2p_patch_unmount_success">メモリパッチを正常にマウント解除し、純正Wi-Fi状態に復元しました！</string>
     <string name="p2p_patch_unmount_failed">マウント解除コマンドの送信に失敗しました。パイオニアRoot権限を確認してください。</string>
+    <string name="settings_grant_vpn_permission">有線接続VPN権限を修復</string>
+    <string name="settings_grant_vpn_permission_description">パイオニアRoot経由でACTIVATE_VPN権限を付与し、VpnDialogs欠如によるエラー表示を解消します。</string>
+    <string name="vpn_permission_granted_success">VPN権限を正常に付与しました。有線CarPlayの準備が整いました！</string>
+    <string name="vpn_permission_granted_failed">VPN権限の付与に失敗しました。パイオニアRoot権限を確認してください。</string>
 </resources>

@@ -906,4 +906,8 @@
     <string name="p2p_patch_mount_failed">Не удалось отправить команду монтирования. Проверьте права Pioneer root.</string>
     <string name="p2p_patch_unmount_success">Патч успешно размонтирован, заводской Wi-Fi восстановлен!</string>
     <string name="p2p_patch_unmount_failed">Не удалось отправить команду размонтирования. Проверьте права Pioneer root.</string>
+    <string name="settings_grant_vpn_permission">Восстановить разрешение VPN</string>
+    <string name="settings_grant_vpn_permission_description">Разрешает ACTIVATE_VPN через Pioneer root для устранения ошибок авторизации на устройствах без VpnDialogs.</string>
+    <string name="vpn_permission_granted_success">Разрешение VPN успешно предоставлено! Проводной CarPlay готов.</string>
+    <string name="vpn_permission_granted_failed">Не удалось предоставить разрешение VPN. Проверьте права Pioneer root.</string>
 </resources>

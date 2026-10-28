@@ -918,4 +918,8 @@
     <string name="p2p_patch_mount_failed">Не вдалося надіслати команду монтування. Перевірте права Pioneer root.</string>
     <string name="p2p_patch_unmount_success">Патч успішно розмонтовано, заводський Wi-Fi відновлено!</string>
     <string name="p2p_patch_unmount_failed">Не вдалося надіслати команду розмонтування. Перевірте права Pioneer root.</string>
+    <string name="settings_grant_vpn_permission">Відновити дозвіл VPN</string>
+    <string name="settings_grant_vpn_permission_description">Дозволяє ACTIVATE_VPN через Pioneer root для усунення помилок авторизації на пристроях без VpnDialogs.</string>
+    <string name="vpn_permission_granted_success">Дозвіл VPN успішно надано! Дротовий CarPlay готовий.</string>
+    <string name="vpn_permission_granted_failed">Не вдалося надати дозвіл VPN. Перевірте права Pioneer root.</string>
 </resources>

@@ -1763,6 +1763,8 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
             card.addView(label(getString(R.string.settings_enable_wireless_adb_description), 14, MUTED).apply { setPadding(0, dp(8), 0, 0) })
             card.addView(button(getString(R.string.settings_test_pioneer_root), false) { testPioneerRootChannel() }, matchButton(10, 60))
             card.addView(label(getString(R.string.settings_test_pioneer_root_description), 14, MUTED).apply { setPadding(0, dp(8), 0, 0) })
+            card.addView(button(getString(R.string.settings_grant_vpn_permission), false) { grantVpnPermission() }, matchButton(10, 60))
+            card.addView(label(getString(R.string.settings_grant_vpn_permission_description), 14, MUTED).apply { setPadding(0, dp(8), 0, 0) })
             card.addView(button(getString(R.string.settings_mount_p2p_patch), false) { mountP2pPatch() }, matchButton(10, 60))
             card.addView(label(getString(R.string.settings_mount_p2p_patch_description), 14, MUTED).apply { setPadding(0, dp(8), 0, 0) })
             card.addView(button(getString(R.string.settings_unmount_p2p_patch), false) { unmountP2pPatch() }, matchButton(10, 60))
@@ -5805,6 +5807,29 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
                     .show()
             }
         }, "diplay-test-pioneer-root").start()
+    }
+
+    private fun grantVpnPermission() {
+        val cmd = "appops set com.tencent.mm ACTIVATE_VPN allow"
+        Thread({
+            val callResult = runCatching {
+                val proxyClass = Class.forName("jp.pioneer.ceam.widget.DebugModeServiceProxy.DebugModeServiceProxy")
+                val getInstance = proxyClass.getMethod("getInstance")
+                val proxyInstance = getInstance.invoke(null)
+                val systemcall = proxyClass.getMethod("systemcall", String::class.java)
+                systemcall.isAccessible = true
+                systemcall.invoke(proxyInstance, cmd) as? Boolean ?: false
+            }
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                val msg = if (callResult.getOrDefault(false)) {
+                    getString(R.string.vpn_permission_granted_success)
+                } else {
+                    getString(R.string.vpn_permission_granted_failed)
+                }
+                android.widget.Toast.makeText(this, msg, android.widget.Toast.LENGTH_LONG).show()
+            }
+        }, "diplay-grant-vpn").start()
     }
 
     private fun mountP2pPatch() {

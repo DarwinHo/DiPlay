@@ -906,4 +906,8 @@
     <string name="p2p_patch_mount_failed">Error al enviar el comando de montaje. Comprueba los permisos de Pioneer root.</string>
     <string name="p2p_patch_unmount_success">¡Parche desmontado con éxito y restaurado el estado de Wi-Fi de fábrica!</string>
     <string name="p2p_patch_unmount_failed">Error al enviar el comando de desmontaje. Comprueba los permisos de Pioneer root.</string>
+    <string name="settings_grant_vpn_permission">Reparar permiso de VPN por cable</string>
+    <string name="settings_grant_vpn_permission_description">Permite ACTIVATE_VPN mediante Pioneer root para eliminar errores de autorización en unidades sin VpnDialogs.</string>
+    <string name="vpn_permission_granted_success">¡Permiso de VPN concedido con éxito! CarPlay por cable listo.</string>
+    <string name="vpn_permission_granted_failed">Error al conceder permiso de VPN. Comprueba los permisos de Pioneer root.</string>
 </resources>

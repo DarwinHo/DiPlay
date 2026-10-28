@@ -1009,4 +1009,8 @@
     <string name="p2p_patch_mount_failed">Failed to send mount command. Please check Pioneer root channel.</string>
     <string name="p2p_patch_unmount_success">Patch unmounted successfully. Restored to factory stock Wi-Fi!</string>
     <string name="p2p_patch_unmount_failed">Failed to send unmount command. Please check Pioneer root channel.</string>
+    <string name="settings_grant_vpn_permission">Grant Wired VPN Permission</string>
+    <string name="settings_grant_vpn_permission_description">Allow ACTIVATE_VPN via Pioneer root to eliminate VPN authorization errors on head units without VpnDialogs.</string>
+    <string name="vpn_permission_granted_success">Wired VPN permission granted successfully!</string>
+    <string name="vpn_permission_granted_failed">Failed to grant VPN permission. Please check Pioneer root channel.</string>
 </resources>

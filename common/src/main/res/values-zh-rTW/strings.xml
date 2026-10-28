@@ -966,4 +966,8 @@
     <string name="p2p_patch_mount_failed">發送掛載指令失敗，請檢查先鋒底層權限。</string>
     <string name="p2p_patch_unmount_success">已成功卸載記憶體修補並恢復原廠 Wi-Fi 狀態！</string>
     <string name="p2p_patch_unmount_failed">發送卸載指令失敗，請檢查先鋒底層權限。</string>
+    <string name="settings_grant_vpn_permission">一鍵修復有線 VPN 權限</string>
+    <string name="settings_grant_vpn_permission_description">透過先鋒 Root 通道豁免 ACTIVATE_VPN 權限，徹底消除車機缺少 VpnDialogs 導致的彈窗報錯。</string>
+    <string name="vpn_permission_granted_success">已成功設定 VPN 權限，有線 CarPlay 準備就緒！</string>
+    <string name="vpn_permission_granted_failed">設定 VPN 權限失敗，請檢查先鋒底層權限。</string>
 </resources>

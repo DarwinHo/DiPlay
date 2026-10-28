@@ -966,4 +966,8 @@
     <string name="p2p_patch_mount_failed">下发挂载指令失败，请检查先锋底层权限。</string>
     <string name="p2p_patch_unmount_success">已成功卸载内存补丁并恢复原厂 Wi-Fi 状态！</string>
     <string name="p2p_patch_unmount_failed">下发卸载指令失败，请检查先锋底层权限。</string>
+    <string name="settings_grant_vpn_permission">一键修复有线 VPN 权限</string>
+    <string name="settings_grant_vpn_permission_description">通过先锋 Root 通道豁免 ACTIVATE_VPN 权限，彻底消除车机缺少 VpnDialogs 导致的弹窗报错。</string>
+    <string name="vpn_permission_granted_success">已成功配置 VPN 权限，有线 CarPlay 准备就绪！</string>
+    <string name="vpn_permission_granted_failed">配置 VPN 权限失败，请检查先锋底层权限。</string>
 </resources>

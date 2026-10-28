@@ -229,6 +229,23 @@ class DiagnosticExportUiTest {
         }
     }
 
+    @Test fun grantVpnPermissionRendersAndCanBeClicked() {
+        val controller = Robolectric.buildActivity(DiPlayActivity::class.java).setup()
+        val activity = controller.get()
+        try {
+            val content = LinearLayout(activity)
+            ReflectionHelpers.callInstanceMethod<Unit>(activity, "renderSections",
+                ReflectionHelpers.ClassParameter.from(LinearLayout::class.java, content),
+                ReflectionHelpers.ClassParameter.from(Set::class.java, setOf(SettingsSection.DIAGNOSTICS)))
+            val button = descendants(content).filterIsInstance<Button>()
+                .single { it.text == activity.getString(R.string.settings_grant_vpn_permission) }
+            button.performClick()
+            shadowOf(Looper.getMainLooper()).idle()
+        } finally {
+            controller.pause().stop().destroy()
+        }
+    }
+
     @Test fun mountP2pPatchRendersAndCanBeClicked() {
         val controller = Robolectric.buildActivity(DiPlayActivity::class.java).setup()
         val activity = controller.get()
