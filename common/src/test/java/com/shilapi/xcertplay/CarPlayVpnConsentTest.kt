@@ -11,6 +11,8 @@ import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.ActivityOptionsCompat
 import com.shilapi.xcertplay.airplay.AirPlayIdentity
+import com.shilapi.xcertplay.media.AndroidMediaSink
+import com.shilapi.xcertplay.media.CarPlayNowPlaying
 import com.shilapi.xcertplay.orchestration.CarPlayController
 import org.mockito.MockedConstruction
 import org.mockito.Mockito.mockConstruction
@@ -53,6 +55,12 @@ class CarPlayVpnConsentTest {
     @After fun tearDown() {
         ReflectionHelpers.getField<AtomicBoolean>(activity, "shuttingDown").set(true)
         ReflectionHelpers.getField<Handler>(activity, "mainHandler").removeCallbacksAndMessages(null)
+        AirPlayPersistence.overlaySettingsListener = null
+        com.shilapi.xcertplay.hud.BydNavigationOutputs.setTurnOverlayListener(null)
+        field<CarPlayController?>("controller")?.let {
+            CarPlayMediaKeys.detach(it)
+        }
+        (ReflectionHelpers.getField<Any?>(activity, "sink") as? AndroidMediaSink)?.close()
         ReflectionHelpers.getField<ExecutorService>(activity, "teardownExecutor").shutdownNow()
         ReflectionHelpers.getField<ExecutorService>(activity, "airPlayCommandExecutor").shutdownNow()
         CarPlayBackgroundSession.clear()
@@ -146,7 +154,7 @@ class CarPlayVpnConsentTest {
             preparerCalls++
             VpnConsentTestShadow.prepare(ctx)
         }
-        val controllers: MockedConstruction<CarPlayController> = mockConstruction(CarPlayController::class.java)
+        val controllers: MockedConstruction<CarPlayController> = mockCarPlayController()
         try {
             VpnConsentTestShadow.consent = Intent().setClassName("com.android.vpndialogs", "com.android.vpndialogs.ConfirmDialog")
             invoke("requestVpnConsent")
@@ -186,6 +194,11 @@ class CarPlayVpnConsentTest {
             org.mockito.Mockito.verify(createdController, org.mockito.Mockito.never()).close()
             assertSame("Existing controller must not be replaced", createdController, field("controller"))
         } finally {
+            field<CarPlayController?>("controller")?.let {
+                CarPlayMediaKeys.detach(it)
+            }
+            (ReflectionHelpers.getField<Any?>(activity, "sink") as? AndroidMediaSink)?.close()
+            CarPlayBackgroundSession.clear()
             controllers.close()
         }
     }
@@ -197,7 +210,7 @@ class CarPlayVpnConsentTest {
             preparerCalls++
             VpnConsentTestShadow.prepare(ctx)
         }
-        val controllers: MockedConstruction<CarPlayController> = mockConstruction(CarPlayController::class.java)
+        val controllers: MockedConstruction<CarPlayController> = mockCarPlayController()
         try {
             VpnConsentTestShadow.consent = Intent().setClassName("com.android.vpndialogs", "com.android.vpndialogs.ConfirmDialog")
             ReflectionHelpers.setField(activity, "vpnReady", false)
@@ -214,6 +227,11 @@ class CarPlayVpnConsentTest {
             assertEquals("CarPlay must not start when VPN is still denied", 0, controllers.constructed().size)
             assertNull(field<CarPlayController?>("controller"))
         } finally {
+            field<CarPlayController?>("controller")?.let {
+                CarPlayMediaKeys.detach(it)
+            }
+            (ReflectionHelpers.getField<Any?>(activity, "sink") as? AndroidMediaSink)?.close()
+            CarPlayBackgroundSession.clear()
             controllers.close()
         }
     }
@@ -225,7 +243,7 @@ class CarPlayVpnConsentTest {
             preparerCalls++
             VpnConsentTestShadow.prepare(ctx)
         }
-        val controllers: MockedConstruction<CarPlayController> = mockConstruction(CarPlayController::class.java)
+        val controllers: MockedConstruction<CarPlayController> = mockCarPlayController()
         try {
             VpnConsentTestShadow.consent = Intent().setClassName("com.android.vpndialogs", "com.android.vpndialogs.ConfirmDialog")
             ReflectionHelpers.setField(activity, "vpnReady", false)
@@ -242,6 +260,11 @@ class CarPlayVpnConsentTest {
             assertEquals("CarPlay must not start while awaiting consent", 0, controllers.constructed().size)
             assertNull(field<CarPlayController?>("controller"))
         } finally {
+            field<CarPlayController?>("controller")?.let {
+                CarPlayMediaKeys.detach(it)
+            }
+            (ReflectionHelpers.getField<Any?>(activity, "sink") as? AndroidMediaSink)?.close()
+            CarPlayBackgroundSession.clear()
             controllers.close()
         }
     }
@@ -253,7 +276,7 @@ class CarPlayVpnConsentTest {
             preparerCalls++
             VpnConsentTestShadow.prepare(ctx)
         }
-        val controllers: MockedConstruction<CarPlayController> = mockConstruction(CarPlayController::class.java)
+        val controllers: MockedConstruction<CarPlayController> = mockCarPlayController()
         try {
             VpnConsentTestShadow.failure = SecurityException("OEM security restriction")
             ReflectionHelpers.setField(activity, "vpnAdbConsentTried", false)
@@ -272,9 +295,19 @@ class CarPlayVpnConsentTest {
             assertEquals("CarPlay must not start on exception", 0, controllers.constructed().size)
             assertTrue(log().contains("failureClass=SecurityException"))
         } finally {
+            field<CarPlayController?>("controller")?.let {
+                CarPlayMediaKeys.detach(it)
+            }
+            (ReflectionHelpers.getField<Any?>(activity, "sink") as? AndroidMediaSink)?.close()
+            CarPlayBackgroundSession.clear()
             controllers.close()
         }
     }
+
+    private fun mockCarPlayController(): MockedConstruction<CarPlayController> =
+        mockConstruction(CarPlayController::class.java) { controller, _ ->
+            org.mockito.Mockito.`when`(controller.nowPlayingSnapshot()).thenReturn(CarPlayNowPlaying())
+        }
 
     private fun prepareCarPlayPrerequisites() {
         AirPlayPersistence.saveWirelessEnabled(activity, false)
