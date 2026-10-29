@@ -891,10 +891,12 @@ class CarPlayHostActivity : ComponentActivity() {
         checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) ==
             PackageManager.PERMISSION_GRANTED
 
+    internal var vpnPreparer: (Context) -> Intent? = { context -> CarPlayVpnService.prepare(context) }
+
     private fun requestVpnConsent() {
         if (awaitingVpnConsent) return
         val consent = try {
-            CarPlayVpnService.prepare(this)
+            vpnPreparer(this)
         } catch (error: ActivityNotFoundException) {
             onVpnConsentUnavailable("prepare", null, error)
             return
@@ -915,6 +917,21 @@ class CarPlayHostActivity : ComponentActivity() {
             onVpnConsentUnavailable("launch", consent, error)
         } catch (error: SecurityException) {
             onVpnConsentUnavailable("launch", consent, error)
+        }
+    }
+
+    private fun recheckVpnAuthorization() {
+        if (shuttingDown.get() || isFinishing || isDestroyed) return
+        if (controller != null || awaitingVpnConsent || wirelessEnabled) return
+        try {
+            val consent = vpnPreparer(this)
+            vpnReady = consent == null
+        } catch (error: ActivityNotFoundException) {
+            vpnReady = false
+            appendLog("VPN recheck unavailable operation=prepare failureClass=ActivityNotFoundException message=${error.message}")
+        } catch (error: SecurityException) {
+            vpnReady = false
+            appendLog("VPN recheck unavailable operation=prepare failureClass=SecurityException message=${error.message}")
         }
     }
 
@@ -1065,6 +1082,7 @@ class CarPlayHostActivity : ComponentActivity() {
             requestLocationPermission()
         }
         wirelessPermissionsReady = !wirelessEnabled || hasRequiredWirelessPermissions()
+        recheckVpnAuthorization()
         advancedAudioChannelMapping =
             advancedAudioChannelMappingSupported &&
                 AirPlayPersistence.loadAdvancedAudioChannelMapping(this)
@@ -5837,6 +5855,7 @@ class CarPlayHostActivity : ComponentActivity() {
         } else if ((reconnect || recoveryPending) && controller != null) {
             restartCarPlay(if (reconnect) "Settings saved; reconnecting" else "Connection lost while settings were open; reconnecting")
         } else {
+            recheckVpnAuthorization()
             maybeStartCarPlay()
         }
     }

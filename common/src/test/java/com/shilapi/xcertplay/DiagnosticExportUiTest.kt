@@ -1,6 +1,7 @@
 package com.shilapi.xcertplay
 
 import android.content.ActivityNotFoundException
+import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Looper
 import android.os.Build
@@ -22,6 +23,7 @@ import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowAlertDialog
 import org.robolectric.shadows.ShadowContentResolver
+import org.robolectric.shadows.ShadowToast
 import org.robolectric.util.ReflectionHelpers
 import java.io.File
 
@@ -241,6 +243,130 @@ class DiagnosticExportUiTest {
                 .single { it.text == activity.getString(R.string.settings_grant_vpn_permission) }
             button.performClick()
             shadowOf(Looper.getMainLooper()).idle()
+        } finally {
+            controller.pause().stop().destroy()
+        }
+    }
+
+    @Test fun grantVpnPermissionWithSuccessfulSystemCallAndConfirmedReadbackShowsSuccess() {
+        val controller = Robolectric.buildActivity(DiPlayActivity::class.java).setup()
+        val activity = controller.get()
+        try {
+            ReflectionHelpers.setField(activity, "pioneerSystemCallRunner", { _: String -> true })
+            ReflectionHelpers.setField(activity, "vpnPermissionChecker", { _: Context -> null as Intent? })
+            ReflectionHelpers.callInstanceMethod<Unit>(activity, "grantVpnPermission")
+            val deadline = System.nanoTime() + 3_000_000_000L
+            while (ShadowToast.getLatestToast() == null && System.nanoTime() < deadline) {
+                Thread.sleep(10)
+                shadowOf(Looper.getMainLooper()).idle()
+            }
+            assertEquals(
+                DiPlayActivity.VpnGrantOutcome.Success,
+                ReflectionHelpers.getField<DiPlayActivity.VpnGrantOutcome?>(activity, "lastVpnGrantOutcome"),
+            )
+            assertEquals(
+                activity.getString(R.string.vpn_permission_granted_success),
+                ShadowToast.getTextOfLatestToast(),
+            )
+        } finally {
+            controller.pause().stop().destroy()
+        }
+    }
+
+    @Test fun grantVpnPermissionWithSuccessfulSystemCallButFailedReadbackShowsFailure() {
+        val controller = Robolectric.buildActivity(DiPlayActivity::class.java).setup()
+        val activity = controller.get()
+        try {
+            ReflectionHelpers.setField(activity, "pioneerSystemCallRunner", { _: String -> true })
+            ReflectionHelpers.setField(activity, "vpnPermissionChecker", { _: Context -> Intent() })
+            ReflectionHelpers.callInstanceMethod<Unit>(activity, "grantVpnPermission")
+            val deadline = System.nanoTime() + 3_000_000_000L
+            while (ShadowToast.getLatestToast() == null && System.nanoTime() < deadline) {
+                Thread.sleep(10)
+                shadowOf(Looper.getMainLooper()).idle()
+            }
+            assertEquals(
+                DiPlayActivity.VpnGrantOutcome.ReadbackStillDenied,
+                ReflectionHelpers.getField<DiPlayActivity.VpnGrantOutcome?>(activity, "lastVpnGrantOutcome"),
+            )
+            assertEquals(
+                activity.getString(R.string.vpn_permission_granted_failed),
+                ShadowToast.getTextOfLatestToast(),
+            )
+        } finally {
+            controller.pause().stop().destroy()
+        }
+    }
+
+    @Test fun grantVpnPermissionWithFailedSystemCallShowsFailure() {
+        val controller = Robolectric.buildActivity(DiPlayActivity::class.java).setup()
+        val activity = controller.get()
+        try {
+            ReflectionHelpers.setField(activity, "pioneerSystemCallRunner", { _: String -> false })
+            ReflectionHelpers.setField(activity, "vpnPermissionChecker", { _: Context -> null as Intent? })
+            ReflectionHelpers.callInstanceMethod<Unit>(activity, "grantVpnPermission")
+            val deadline = System.nanoTime() + 3_000_000_000L
+            while (ShadowToast.getLatestToast() == null && System.nanoTime() < deadline) {
+                Thread.sleep(10)
+                shadowOf(Looper.getMainLooper()).idle()
+            }
+            val outcome = ReflectionHelpers.getField<DiPlayActivity.VpnGrantOutcome?>(activity, "lastVpnGrantOutcome")
+            assertTrue(outcome is DiPlayActivity.VpnGrantOutcome.SystemCallFailed)
+            assertEquals(
+                activity.getString(R.string.vpn_permission_granted_failed),
+                ShadowToast.getTextOfLatestToast(),
+            )
+        } finally {
+            controller.pause().stop().destroy()
+        }
+    }
+
+    @Test fun grantVpnPermissionWithSystemCallExceptionShowsFailure() {
+        val controller = Robolectric.buildActivity(DiPlayActivity::class.java).setup()
+        val activity = controller.get()
+        try {
+            ReflectionHelpers.setField(activity, "pioneerSystemCallRunner", { _: String ->
+                throw ClassNotFoundException("DebugModeServiceProxy not found")
+            })
+            ReflectionHelpers.callInstanceMethod<Unit>(activity, "grantVpnPermission")
+            val deadline = System.nanoTime() + 3_000_000_000L
+            while (ShadowToast.getLatestToast() == null && System.nanoTime() < deadline) {
+                Thread.sleep(10)
+                shadowOf(Looper.getMainLooper()).idle()
+            }
+            val outcome = ReflectionHelpers.getField<DiPlayActivity.VpnGrantOutcome?>(activity, "lastVpnGrantOutcome")
+            assertTrue(outcome is DiPlayActivity.VpnGrantOutcome.SystemCallException)
+            assertEquals("ClassNotFoundException", (outcome as DiPlayActivity.VpnGrantOutcome.SystemCallException).failureClass)
+            assertEquals(
+                activity.getString(R.string.vpn_permission_granted_failed),
+                ShadowToast.getTextOfLatestToast(),
+            )
+        } finally {
+            controller.pause().stop().destroy()
+        }
+    }
+
+    @Test fun grantVpnPermissionWithReadbackExceptionShowsFailure() {
+        val controller = Robolectric.buildActivity(DiPlayActivity::class.java).setup()
+        val activity = controller.get()
+        try {
+            ReflectionHelpers.setField(activity, "pioneerSystemCallRunner", { _: String -> true })
+            ReflectionHelpers.setField(activity, "vpnPermissionChecker", { _: Context ->
+                throw SecurityException("OEM security error")
+            })
+            ReflectionHelpers.callInstanceMethod<Unit>(activity, "grantVpnPermission")
+            val deadline = System.nanoTime() + 3_000_000_000L
+            while (ShadowToast.getLatestToast() == null && System.nanoTime() < deadline) {
+                Thread.sleep(10)
+                shadowOf(Looper.getMainLooper()).idle()
+            }
+            val outcome = ReflectionHelpers.getField<DiPlayActivity.VpnGrantOutcome?>(activity, "lastVpnGrantOutcome")
+            assertTrue(outcome is DiPlayActivity.VpnGrantOutcome.ReadbackException)
+            assertEquals("SecurityException", (outcome as DiPlayActivity.VpnGrantOutcome.ReadbackException).failureClass)
+            assertEquals(
+                activity.getString(R.string.vpn_permission_granted_failed),
+                ShadowToast.getTextOfLatestToast(),
+            )
         } finally {
             controller.pause().stop().destroy()
         }

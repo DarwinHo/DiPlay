@@ -239,6 +239,40 @@ class CarPlayController(
 
     private val albumReplayLock = Any()
     private var initialArtworkReplay: com.shilapi.xcertplay.transport.Iap2ArtworkTransfer? = null
+    internal var pioneerTargetSelector: (String?) -> com.shilapi.xcertplay.transport.PioneerBluetooth.Target =
+        { address -> com.shilapi.xcertplay.transport.PioneerBluetooth.selectTarget(address) }
+    internal var hotspotManagerFactory: (WirelessHotspotMode, Int) -> WirelessHotspotManager =
+        { mode, generation ->
+            when (mode) {
+                WirelessHotspotMode.WIFI_P2P -> WifiP2pGroupManager(
+                    appContext, ::debugLog,
+                    preferredChannel = config.wifiP2pPreferredChannel,
+                )
+                WirelessHotspotMode.LOCAL_ONLY_HOTSPOT -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    LocalOnlyHotspotManager(appContext, ::debugLog)
+                } else {
+                    throw WirelessStartupException(
+                        WirelessStartupFailure.HOTSPOT_CONFIGURATION,
+                        "Android ${Build.VERSION.RELEASE} has no local-only hotspot. Choose Car hotspot or Wi-Fi Direct.",
+                    )
+                }
+                WirelessHotspotMode.EXISTING_WIFI -> ExistingWifiManager(
+                    appContext, config.existingWifiSsid, config.existingWifiPassphrase, ::debugLog,
+                    onNetworkChanged = { if (!isStaleWirelessRun(generation)) restartWireless() },
+                )
+                WirelessHotspotMode.MANUAL -> ManualHotspotManager(
+                    context = appContext,
+                    ssid = config.manualHotspotSsid
+                        ?: throw WirelessStartupException(WirelessStartupFailure.HOTSPOT_CONFIGURATION, "Manual hotspot SSID is not configured"),
+                    passphrase = config.manualHotspotPassphrase.orEmpty(),
+                    band = config.manualHotspotBand,
+                    channel = config.manualHotspotChannel,
+                    security = config.manualHotspotSecurity,
+                    onDiagnostic = { debugLog("generation=$generation $it") },
+                    isCancelled = { isStaleWirelessRun(generation) },
+                )
+            }
+        }
 
     fun nowPlayingSnapshot(): com.shilapi.xcertplay.media.CarPlayNowPlaying =
         synchronized(playbackStatus) { playbackStatus.nowPlaying }
@@ -1246,12 +1280,17 @@ class CarPlayController(
             firstTcpWatchdog = watchdog
             val mfi = mfiSession?.client
                 ?: throw IOException("MFi coprocessor client is unavailable")
-            // Wireless CarPlay begins over Bluetooth: a radio that is off is found before the Wi-Fi is changed.
-            BluetoothRadioCheck.blocker(
-                adapterPresent = bluetoothAdapter != null,
-                enabled = bluetoothAdapter?.isEnabled == true,
-                pausedByDiPlay = BydBluetoothSuspend.isSuspendedByUs(appContext),
-            )?.let { throw BluetoothRadioCheck.failure(it) }
+            // Wireless CarPlay begins over Bluetooth: check the active backend before changing Wi-Fi.
+            val pioneerTarget = if (config.pioneerBluetoothEnabled) {
+                pioneerTargetSelector(config.wirelessBluetoothDeviceAddress)
+            } else {
+                BluetoothRadioCheck.blocker(
+                    adapterPresent = bluetoothAdapter != null,
+                    enabled = bluetoothAdapter?.isEnabled == true,
+                    pausedByDiPlay = BydBluetoothSuspend.isSuspendedByUs(appContext),
+                )?.let { throw BluetoothRadioCheck.failure(it) }
+                null
+            }
             val hotspotInfo = startWirelessHotspot(generation)
             if (isStaleWirelessRun(generation)) {
                 return
@@ -1330,9 +1369,6 @@ class CarPlayController(
             )
             onStatus(CarPlayStatus.WaitingForPairedIphone)
 
-            val pioneerTarget = if (config.pioneerBluetoothEnabled) {
-                com.shilapi.xcertplay.transport.PioneerBluetooth.selectTarget(config.wirelessBluetoothDeviceAddress)
-            } else null
             val adapter = if (pioneerTarget == null) {
                 bluetoothAdapter ?: throw BluetoothRadioCheck.failure(BluetoothRadioCheck.NO_ADAPTER)
             } else null
@@ -2361,31 +2397,7 @@ class CarPlayController(
             }
             if (state == false) debugLog("car hotspot: Android reports it off; connecting anyway, as the driver chose")
         }
-        val manager: WirelessHotspotManager = when (hotspotMode) {
-            WirelessHotspotMode.WIFI_P2P -> WifiP2pGroupManager(appContext, ::debugLog,
-                preferredChannel = config.wifiP2pPreferredChannel)
-            WirelessHotspotMode.LOCAL_ONLY_HOTSPOT -> if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                LocalOnlyHotspotManager(appContext, ::debugLog)
-            } else {
-                throw WirelessStartupException(WirelessStartupFailure.HOTSPOT_CONFIGURATION,
-                    "Android ${Build.VERSION.RELEASE} has no local-only hotspot. Choose Car hotspot or Wi-Fi Direct.")
-            }
-            WirelessHotspotMode.EXISTING_WIFI -> ExistingWifiManager(
-                appContext, config.existingWifiSsid, config.existingWifiPassphrase, ::debugLog,
-                onNetworkChanged = { if (!isStaleWirelessRun(generation)) restartWireless() },
-            )
-            WirelessHotspotMode.MANUAL -> ManualHotspotManager(
-                context = appContext,
-                ssid = config.manualHotspotSsid
-                    ?: throw WirelessStartupException(WirelessStartupFailure.HOTSPOT_CONFIGURATION, "Manual hotspot SSID is not configured"),
-                passphrase = config.manualHotspotPassphrase.orEmpty(),
-                band = config.manualHotspotBand,
-                channel = config.manualHotspotChannel,
-                security = config.manualHotspotSecurity,
-                onDiagnostic = { debugLog("generation=$generation $it") },
-                isCancelled = { isStaleWirelessRun(generation) },
-            )
-        }
+        val manager: WirelessHotspotManager = hotspotManagerFactory(hotspotMode, generation)
         synchronized(wirelessResourceLock) {
             if (isStaleWirelessRun(generation)) {
                 manager.close()

@@ -5898,20 +5898,65 @@ class DiPlayActivity : ComponentActivity(), AppAppearanceOwner {
         }, "diplay-test-pioneer-root").start()
     }
 
+    sealed class VpnGrantOutcome {
+        object Success : VpnGrantOutcome()
+        data class SystemCallFailed(val reason: String) : VpnGrantOutcome()
+        data class SystemCallException(val failureClass: String) : VpnGrantOutcome()
+        object ReadbackStillDenied : VpnGrantOutcome()
+        data class ReadbackException(val failureClass: String) : VpnGrantOutcome()
+    }
+
+    internal var pioneerSystemCallRunner: (String) -> Boolean = { cmd ->
+        val proxyClass = Class.forName("jp.pioneer.ceam.widget.DebugModeServiceProxy.DebugModeServiceProxy")
+        val getInstance = proxyClass.getMethod("getInstance")
+        val proxyInstance = getInstance.invoke(null)
+        val systemcall = proxyClass.getMethod("systemcall", String::class.java)
+        systemcall.isAccessible = true
+        systemcall.invoke(proxyInstance, cmd) as? Boolean ?: false
+    }
+
+    internal var vpnPermissionChecker: (Context) -> Intent? = { context ->
+        com.shilapi.xcertplay.network.CarPlayVpnService.prepare(context)
+    }
+
+    internal var lastVpnGrantOutcome: VpnGrantOutcome? = null
+
     private fun grantVpnPermission() {
-        val cmd = "appops set com.tencent.mm ACTIVATE_VPN allow"
+        val targetPackage = packageName
+        val cmd = "appops set $targetPackage ACTIVATE_VPN allow"
         Thread({
-            val callResult = runCatching {
-                val proxyClass = Class.forName("jp.pioneer.ceam.widget.DebugModeServiceProxy.DebugModeServiceProxy")
-                val getInstance = proxyClass.getMethod("getInstance")
-                val proxyInstance = getInstance.invoke(null)
-                val systemcall = proxyClass.getMethod("systemcall", String::class.java)
-                systemcall.isAccessible = true
-                systemcall.invoke(proxyInstance, cmd) as? Boolean ?: false
+            val callResult = runCatching { pioneerSystemCallRunner(cmd) }
+            val outcome: VpnGrantOutcome = when {
+                callResult.isFailure -> {
+                    val ex = callResult.exceptionOrNull()
+                    val failureClass = ex?.javaClass?.simpleName ?: "UnknownException"
+                    VpnGrantOutcome.SystemCallException(failureClass)
+                }
+                callResult.getOrNull() != true -> {
+                    VpnGrantOutcome.SystemCallFailed("systemcall returned false")
+                }
+                else -> {
+                    val readbackResult = runCatching { vpnPermissionChecker(this) }
+                    when {
+                        readbackResult.isFailure -> {
+                            val ex = readbackResult.exceptionOrNull()
+                            val failureClass = ex?.javaClass?.simpleName ?: "UnknownException"
+                            VpnGrantOutcome.ReadbackException(failureClass)
+                        }
+                        readbackResult.getOrNull() == null -> {
+                            VpnGrantOutcome.Success
+                        }
+                        else -> {
+                            VpnGrantOutcome.ReadbackStillDenied
+                        }
+                    }
+                }
             }
+            lastVpnGrantOutcome = outcome
+            android.util.Log.i("DiPlay-VPN", "grantVpnPermission outcome=$outcome")
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
-                val msg = if (callResult.getOrDefault(false)) {
+                val msg = if (outcome is VpnGrantOutcome.Success) {
                     getString(R.string.vpn_permission_granted_success)
                 } else {
                     getString(R.string.vpn_permission_granted_failed)
