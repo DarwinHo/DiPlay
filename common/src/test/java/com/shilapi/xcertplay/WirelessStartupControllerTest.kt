@@ -11,7 +11,6 @@ import com.shilapi.xcertplay.network.*
 import com.shilapi.xcertplay.orchestration.*
 import com.shilapi.xcertplay.transport.BluetoothRadioCheck
 import com.shilapi.xcertplay.transport.Iap2IdentificationConfig
-import com.shilapi.xcertplay.transport.PioneerBluetooth
 import org.junit.After
 import org.junit.Assert.*
 import org.junit.Test
@@ -64,7 +63,7 @@ class WirelessStartupControllerTest {
 
     private fun invokeRunWireless(controller: CarPlayController) {
         val phaseEnum = Class.forName("com.shilapi.xcertplay.orchestration.CarPlayController\$Phase")
-        val wirelessPhase = java.lang.Enum.valueOf(phaseEnum as Class<Enum<*>>, "WIRELESS")
+        val wirelessPhase = phaseEnum.enumConstants.first { (it as Enum<*>).name == "WIRELESS" }
         ReflectionHelpers.setField(controller, "phase", wirelessPhase)
         val dummyAuthenticator = object : com.shilapi.xcertplay.mfi.MfiAuthenticator {
             override fun protocolMajor(): Int = 2
@@ -76,6 +75,22 @@ class WirelessStartupControllerTest {
             .apply { isAccessible = true }
         runWirelessMethod.invoke(controller, 0)
         shadowOf(Looper.getMainLooper()).idle()
+    }
+
+    private fun createPioneerTarget(
+        address: String = "12:34:56:78:9A:BC",
+        name: String = "iPhone",
+        handler: Int = 1,
+        localAddress: String = "00:11:22:33:44:55",
+    ): Any {
+        val targetClass = Class.forName("com.shilapi.xcertplay.transport.PioneerBluetooth\$Target")
+        val constructor = targetClass.getDeclaredConstructor(
+            String::class.java,
+            String::class.java,
+            Int::class.javaPrimitiveType,
+            String::class.java,
+        ).apply { isAccessible = true }
+        return constructor.newInstance(address, name, handler, localAddress)
     }
 
     private fun fail(controller: CarPlayController, generation: Int, error: Throwable) {
@@ -134,14 +149,8 @@ class WirelessStartupControllerTest {
             hotspotCreated++
             mockHotspot
         })
-        ReflectionHelpers.setField(controller, "pioneerTargetSelector", { _: String? ->
-            PioneerBluetooth.Target(
-                address = "12:34:56:78:9A:BC",
-                name = "iPhone",
-                handler = 1,
-                localAddress = "00:11:22:33:44:55",
-            )
-        })
+        val target = createPioneerTarget()
+        ReflectionHelpers.setField(controller, "pioneerTargetSelector", { _: String? -> target })
         try {
             invokeRunWireless(controller)
             assertEquals("Expected hotspot to be created via factory", 1, hotspotCreated)
