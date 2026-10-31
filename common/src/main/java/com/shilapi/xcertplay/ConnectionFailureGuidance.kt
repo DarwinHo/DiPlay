@@ -21,6 +21,8 @@ internal object ConnectionFailureGuidance {
             WirelessStartupFailure.HOTSPOT_NOT_READY,
             WirelessStartupFailure.HOTSPOT_CONFIGURATION -> return network(mode)
             WirelessStartupFailure.FIRST_TCP_TIMEOUT -> return iphoneWifi(mode)
+            WirelessStartupFailure.P2P_CHANNEL_UNRESPONSIVE -> return R.string.connection_help_p2p_channel_unresponsive
+            WirelessStartupFailure.P2P_UNSUPPORTED -> return R.string.connection_help_p2p_unsupported
             null -> Unit
         }
 

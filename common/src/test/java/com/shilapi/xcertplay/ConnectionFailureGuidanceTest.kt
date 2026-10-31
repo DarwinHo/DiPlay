@@ -29,6 +29,10 @@ class ConnectionFailureGuidanceTest {
             guide("unknown", startup = WirelessStartupFailure.HOTSPOT_CONFIGURATION))
         assertEquals(R.string.connection_help_iphone_wifi,
             guide("unknown", startup = WirelessStartupFailure.FIRST_TCP_TIMEOUT))
+        assertEquals(R.string.connection_help_p2p_channel_unresponsive,
+            guide("unknown", startup = WirelessStartupFailure.P2P_CHANNEL_UNRESPONSIVE))
+        assertEquals(R.string.connection_help_p2p_unsupported,
+            guide("unknown", startup = WirelessStartupFailure.P2P_UNSUPPORTED))
     }
 
     @Test fun messageHintsAreTransportAwareAndSafeForUnknownErrors() {

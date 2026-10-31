@@ -901,6 +901,8 @@
     <string name="connection_help_bluetooth">افتح قفل iPhone وشغّل بلوتوث وWi-Fi واقرنه بوحدة السيارة. أبقه قريبًا ثم أعد المحاولة.</string>
     <string name="connection_help_general">أعد محاولة الاتصال. إذا فشل مجددًا، ارجع إلى DiPlay واحفظ تقريرًا من الإعدادات ← التشخيص.</string>
     <string name="connection_help_wifi_direct">أبقِ واي فاي وبلوتوث وحدة السيارة قيد التشغيل وiPhone مفتوح القفل وقريبًا، ثم أعد المحاولة. إذا استمر الفشل، انسَ السيارة على iPhone من الإعدادات ← عام ← CarPlay ثم اتصل مجددًا.</string>
+    <string name="connection_help_p2p_channel_unresponsive">لم يستجب نظام السيارة لأمر قناة Wi-Fi Direct. أعد محاولة الاتصال، أو استخدم اتصال USB سلكي إذا كان النظام لا يدعم Wi-Fi Direct.</string>
+    <string name="connection_help_p2p_unsupported">أفاد نظام السيارة بأن Wi-Fi Direct غير مدعوم. اتصل باستخدام اتصال USB سلكي.</string>
     <string name="connection_help_existing_wifi">تأكد من اتصال وحدة السيارة وiPhone بشبكة Wi-Fi نفسها وأن اسمها وكلمة مرورها يطابقان إعدادات DiPlay، ثم أعد المحاولة.</string>
     <string name="settings_report_on_phone">الحصول على التقرير عبر هاتف</string>
     <string name="settings_report_on_phone_hint">امسح الرمز بكاميرا الهاتف لفتح هذه الصفحة في متصفحه، ثم اختر «تنزيل التقرير». أبقِ هذه الشاشة مفتوحة حتى يكتمل التنزيل.</string>

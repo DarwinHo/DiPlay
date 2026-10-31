@@ -950,6 +950,8 @@
     <string name="connection_help_bluetooth">iPhoneのロックを解除し、BluetoothとWi-Fiをオンにして車載端末とペアリングしてください。iPhoneを近くに置いて再試行してください。</string>
     <string name="connection_help_general">接続を再試行してください。再び失敗する場合はDiPlayに戻り、［設定］→［診断］からレポートを保存してください。</string>
     <string name="connection_help_wifi_direct">車載端末のWi-FiとBluetoothをオンにし、iPhoneのロックを解除して近くに置いてから再試行してください。改善しない場合は、iPhoneの［設定］→［一般］→［CarPlay］でこの車の登録を削除してから再接続してください。</string>
+    <string name="connection_help_p2p_channel_unresponsive">車載機システムがWi-Fi Directチャンネルコマンドに応答しませんでした。接続を再試行するか、Wi-Fi Direct非対応の場合は有線USB接続をご利用ください。</string>
+    <string name="connection_help_p2p_unsupported">車載機システムでWi-Fi Directがサポートされていないと報告されました。有線USB接続をご利用ください。</string>
     <string name="connection_help_existing_wifi">車載端末とiPhoneが同じWi-Fiネットワークに接続され、その名前とパスワードがDiPlayの設定と一致しているか確認して、再試行してください。</string>
     <string name="settings_report_on_phone">スマートフォンでレポートを取得</string>
     <string name="settings_report_on_phone_hint">スマートフォンのカメラでQRコードを読み取って、ブラウザーでページを開き、「レポートをダウンロード」を選んでください。ダウンロードが終わるまでこの画面を開いたままにしてください。</string>

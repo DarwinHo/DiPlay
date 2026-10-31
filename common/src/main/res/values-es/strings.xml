@@ -852,6 +852,8 @@
     <string name="connection_help_bluetooth">Desbloquea el iPhone, activa Bluetooth y Wi-Fi y enlázalo con la unidad. Mantenlo cerca y reintenta.</string>
     <string name="connection_help_general">Reintenta la conexión. Si vuelve a fallar, regresa a DiPlay y guarda un informe en Ajustes → Diagnóstico.</string>
     <string name="connection_help_wifi_direct">Mantén activados el Wi-Fi y el Bluetooth de la unidad y el iPhone desbloqueado y cerca, y reintenta. Si sigue fallando, olvida el coche en el iPhone en Ajustes → General → CarPlay y vuelve a conectarte.</string>
+    <string name="connection_help_p2p_channel_unresponsive">El sistema del vehículo no respondió al comando de canal de Wi-Fi Direct. Reintente la conexión o use una conexión USB por cable si el sistema no admite Wi-Fi Direct.</string>
+    <string name="connection_help_p2p_unsupported">El sistema del vehículo indica que Wi-Fi Direct no es compatible. Conéctese mediante una conexión USB por cable.</string>
     <string name="connection_help_existing_wifi">Comprueba que la unidad y el iPhone estén en la misma red Wi-Fi y que su nombre y contraseña coincidan con DiPlay, y reintenta.</string>
     <string name="settings_report_on_phone">Obtener el informe en un teléfono</string>
     <string name="settings_report_on_phone_hint">Escanea el código con la cámara del teléfono para abrir esta página en su navegador y elige Descargar informe. Mantén esta pantalla abierta hasta que termine la descarga.</string>

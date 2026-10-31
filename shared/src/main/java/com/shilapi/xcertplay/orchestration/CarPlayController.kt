@@ -2969,9 +2969,14 @@ class CarPlayController(
                 firstTcpWatchdog?.terminate()
             }
             val causes = generateSequence(error) { it.cause }.toList()
+            val startupFailure = if (wireless) {
+                com.shilapi.xcertplay.network.WirelessStartupPolicy.classify(error)
+            } else {
+                causes.filterIsInstance<WirelessStartupException>().firstOrNull()?.reason
+            }
             onStatus(CarPlayStatus.Failed(error.message ?: error.javaClass.simpleName,
                 causes.any { it is com.shilapi.xcertplay.network.P2pResetRequiredException },
-                causes.filterIsInstance<WirelessStartupException>().firstOrNull()?.reason,
+                startupFailure,
                 earlyUsbFailure = earlyUsbFailure),
                 if (wireless) wirelessGeneration.get() else null)
         }
