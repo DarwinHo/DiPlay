@@ -1,6 +1,5 @@
 package com.shilapi.xcertplay.network
 
-import android.os.ParcelFileDescriptor
 import com.shilapi.xcertplay.transport.EthernetIpv6Codec
 import com.shilapi.xcertplay.transport.NcmUsbBridge
 import org.junit.Assert.*
@@ -11,12 +10,11 @@ import org.mockito.ArgumentMatchers.anyInt
 import org.mockito.Mockito.*
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
-import java.io.EOFException
-import java.net.ServerSocket
-import java.net.Socket
-import java.net.SocketTimeoutException
+import java.io.InputStream
+import java.io.OutputStream
 import java.util.Collections
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -96,49 +94,63 @@ class Ipv6NcmBridgeDiagnosticTest {
         return packet
     }
 
-    private class SocketPairFixture : AutoCloseable {
-        var server: ServerSocket? = null
-        var client: Socket? = null
-        var hostSide: Socket? = null
-        var tunPfd: ParcelFileDescriptor? = null
+    private class ControlledTunIo : Ipv6NcmBridge.TunIoAdapter {
+        val inboundPackets = LinkedBlockingQueue<ByteArray>() // TUN -> NCM (read by runTunToNcm)
+        val outboundPackets = LinkedBlockingQueue<ByteArray>() // NCM -> TUN (written by runNcmToTun)
+        @Volatile var closed = false
 
-        init {
-            try {
-                server = ServerSocket(0)
-                client = Socket("127.0.0.1", server!!.localPort)
-                hostSide = server!!.accept()
-                tunPfd = ParcelFileDescriptor.fromSocket(client)
-            } catch (error: Throwable) {
-                close()
-                throw error
+        override fun openInput(): InputStream = object : InputStream() {
+            private var currentPacket: ByteArray? = null
+            private var currentPos = 0
+
+            override fun read(): Int {
+                val b = ByteArray(1)
+                val r = read(b, 0, 1)
+                return if (r > 0) b[0].toInt() and 0xff else -1
+            }
+
+            override fun read(b: ByteArray, off: Int, len: Int): Int {
+                if (closed) return -1
+                val packet = currentPacket ?: try {
+                    while (!closed) {
+                        val p = inboundPackets.poll(50, TimeUnit.MILLISECONDS)
+                        if (p != null) {
+                            currentPacket = p
+                            currentPos = 0
+                            break
+                        }
+                    }
+                    currentPacket ?: return -1
+                } catch (_: InterruptedException) {
+                    Thread.currentThread().interrupt()
+                    return -1
+                }
+                val toCopy = minOf(len, packet.size - currentPos)
+                System.arraycopy(packet, currentPos, b, off, toCopy)
+                currentPos += toCopy
+                if (currentPos >= packet.size) {
+                    currentPacket = null
+                }
+                return toCopy
+            }
+        }
+
+        override fun openOutput(): OutputStream = object : OutputStream() {
+            override fun write(b: Int) {
+                outboundPackets.offer(byteArrayOf(b.toByte()))
+            }
+
+            override fun write(b: ByteArray, off: Int, len: Int) {
+                if (len > 0) {
+                    outboundPackets.offer(b.copyOfRange(off, off + len))
+                }
             }
         }
 
         override fun close() {
-            runCatching { tunPfd?.close() }
-            runCatching { client?.close() }
-            runCatching { hostSide?.close() }
-            runCatching { server?.close() }
+            closed = true
+            inboundPackets.offer(ByteArray(0))
         }
-    }
-
-    private fun readFully(socket: Socket, targetLength: Int, timeoutMillis: Int = 4000): ByteArray {
-        val deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMillis.toLong())
-        val input = socket.getInputStream()
-        val result = ByteArray(targetLength)
-        var offset = 0
-        while (offset < targetLength) {
-            val remainingNanos = deadline - System.nanoTime()
-            if (remainingNanos <= 0) {
-                throw SocketTimeoutException("Read deadline exceeded after $offset of $targetLength bytes")
-            }
-            val remainingMillis = TimeUnit.NANOSECONDS.toMillis(remainingNanos).coerceAtLeast(1)
-            socket.soTimeout = remainingMillis.toInt().coerceAtLeast(1)
-            val read = input.read(result, offset, targetLength - offset)
-            if (read < 0) throw EOFException("Socket closed after $offset of $targetLength bytes")
-            offset += read
-        }
-        return result
     }
 
     @Test fun diagnosticTracksBidirectionalTrafficWithExactByteComparison() {
@@ -162,69 +174,69 @@ class Ipv6NcmBridgeDiagnosticTest {
 
         val sendLatch = CountDownLatch(1)
         var capturedSentFrame: ByteArray? = null
-        `when`(mockNcm.send(any(), anyInt())).thenAnswer { invocation ->
+        `when`(mockNcm.send(any(ByteArray::class.java) ?: byteArrayOf(), anyInt())).thenAnswer { invocation ->
             capturedSentFrame = (invocation.arguments[0] as ByteArray).copyOf()
             sendLatch.countDown()
             true
         }
 
-        SocketPairFixture().use { fixture ->
-            val bridge = Ipv6NcmBridge(
-                ncm = mockNcm,
-                tun = fixture.tunPfd!!,
-                hostMac = dummyHostMac(),
-                onError = { errors.add(it) },
-                onDiagnostic = { diagnostics.add(it) },
-            )
+        val tunIo = ControlledTunIo()
+        val bridge = Ipv6NcmBridge(
+            ncm = mockNcm,
+            tunAdapter = tunIo,
+            hostMac = dummyHostMac(),
+            onError = { errors.add(it) },
+            onDiagnostic = { diagnostics.add(it) },
+        )
 
-            try {
-                bridge.start()
+        try {
+            bridge.start()
 
-                // 1. Inbound NCM -> TUN forwarding verified by reading exact payload bytes from hostSide socket
-                assertTrue("NS frame must be fetched by bridge", ncmDeliveredLatch.await(3, TimeUnit.SECONDS))
-                val tunReadPayload = readFully(fixture.hostSide!!, 64)
-                val expectedIpv6Payload = nsFrame.copyOfRange(14, nsFrame.size)
-                assertArrayEquals("Forwarded IPv6 payload must match original NS bytes exactly", expectedIpv6Payload, tunReadPayload)
+            // 1. Inbound NCM -> TUN forwarding verified by reading exact payload bytes from outboundPackets
+            assertTrue("NS frame must be fetched by bridge", ncmDeliveredLatch.await(3, TimeUnit.SECONDS))
+            val tunReadPayload = tunIo.outboundPackets.poll(3, TimeUnit.SECONDS)
+            assertNotNull("TUN outbound packet must not be null", tunReadPayload)
+            val expectedIpv6Payload = nsFrame.copyOfRange(14, nsFrame.size)
+            assertArrayEquals("Forwarded IPv6 payload must match original NS bytes exactly", expectedIpv6Payload, tunReadPayload)
 
-                // 2. Outbound TUN -> NCM forwarding verified by writing unpatched NA into hostSide socket
-                val unpatchedNa = buildUnpatchedNeighborAdvertisement()
-                fixture.hostSide!!.getOutputStream().write(unpatchedNa)
-                fixture.hostSide!!.getOutputStream().flush()
+            // 2. Outbound TUN -> NCM forwarding verified by offering unpatched NA into inboundPackets
+            val unpatchedNa = buildUnpatchedNeighborAdvertisement()
+            tunIo.inboundPackets.offer(unpatchedNa)
 
-                assertTrue("Outbound NA must be forwarded to NCM send()", sendLatch.await(3, TimeUnit.SECONDS))
-                assertNotNull("Captured frame must not be null", capturedSentFrame)
-                val sent = capturedSentFrame!!
+            assertTrue("Outbound NA must be forwarded to NCM send()", sendLatch.await(3, TimeUnit.SECONDS))
+            assertNotNull("Captured frame must not be null", capturedSentFrame)
+            val sent = capturedSentFrame!!
 
-                // Ethernet header (14) + Patched NA (72: 64 + 8 target link option) = 86 bytes
-                assertEquals("Patched NA frame must contain Ethernet header + patched option", 86, sent.size)
-                assertArrayEquals("Ethernet Destination MAC must be peerMac", dummyPeerMac(), sent.copyOfRange(0, 6))
-                assertArrayEquals("Ethernet Source MAC must be hostMac", dummyHostMac(), sent.copyOfRange(6, 12))
-                assertEquals("EtherType must be IPv6 (0x86dd)", 0x86, sent[12].toInt() and 0xff)
-                assertEquals("EtherType must be IPv6 (0x86dd)", 0xdd, sent[13].toInt() and 0xff)
-                assertEquals("Patched IPv6 payload length must be 32 bytes", 32, (sent[18].toInt() and 0xff shl 8) or (sent[19].toInt() and 0xff))
-                assertEquals("Target Link-Layer Option type must be 2", 2, sent[78].toInt() and 0xff)
-                assertEquals("Target Link-Layer Option length must be 1 (8 octets)", 1, sent[79].toInt() and 0xff)
-                assertArrayEquals("Target Link-Layer Option MAC must be hostMac", dummyHostMac(), sent.copyOfRange(80, 86))
-            } finally {
-                bridge.close()
-            }
-
-            assertTrue("No I/O errors expected in bidirectional forwarding: $errors", errors.isEmpty())
-
-            // Assert diagnostic outputs
-            assertTrue("Must record NCM inbound NS", diagnostics.any { it.contains("ncm rx first icmp6 NS (type=135)") })
-            assertTrue("Must record TUN outbound NA", diagnostics.any { it.contains("tun rx first icmp6 NA (type=136)") })
-            assertTrue("Must record target-link-layer option patch", diagnostics.any { it.contains("tun added target-link-layer option to first NA") })
-            assertTrue("Must emit final summary on close after threads join", diagnostics.any { it.startsWith("ncm io final:") })
-
-            val finalSummary = diagnostics.single { it.startsWith("ncm io final:") }
-            assertTrue(finalSummary.contains("rxFrames=1"))
-            assertTrue(finalSummary.contains("ncmRxIcmp6_NS=1"))
-            assertTrue(finalSummary.contains("tunRxIcmp6_NA=1"))
-            assertTrue(finalSummary.contains("tunPatchedNA=1"))
-            assertTrue(finalSummary.contains("ncmTxCompleted=1"))
-            assertTrue(finalSummary.contains("ncmTxDroppedNotReady=0"))
+            // Ethernet header (14) + Patched NA (72: 64 + 8 target link option) = 86 bytes
+            assertEquals("Patched NA frame must contain Ethernet header + patched option", 86, sent.size)
+            assertArrayEquals("Ethernet Destination MAC must be peerMac", dummyPeerMac(), sent.copyOfRange(0, 6))
+            assertArrayEquals("Ethernet Source MAC must be hostMac", dummyHostMac(), sent.copyOfRange(6, 12))
+            assertEquals("EtherType must be IPv6 (0x86dd)", 0x86, sent[12].toInt() and 0xff)
+            assertEquals("EtherType must be IPv6 (0x86dd)", 0xdd, sent[13].toInt() and 0xff)
+            assertEquals("Patched IPv6 payload length must be 32 bytes", 32, (sent[18].toInt() and 0xff shl 8) or (sent[19].toInt() and 0xff))
+            assertEquals("Target Link-Layer Option type must be 2", 2, sent[78].toInt() and 0xff)
+            assertEquals("Target Link-Layer Option length must be 1 (8 octets)", 1, sent[79].toInt() and 0xff)
+            assertArrayEquals("Target Link-Layer Option MAC must be hostMac", dummyHostMac(), sent.copyOfRange(80, 86))
+        } finally {
+            bridge.close()
+            tunIo.close()
         }
+
+        assertTrue("No I/O errors expected in bidirectional forwarding: $errors", errors.isEmpty())
+
+        // Assert diagnostic outputs
+        assertTrue("Must record NCM inbound NS", diagnostics.any { it.contains("ncm rx first icmp6 NS (type=135)") })
+        assertTrue("Must record TUN outbound NA", diagnostics.any { it.contains("tun rx first icmp6 NA (type=136)") })
+        assertTrue("Must record target-link-layer option patch", diagnostics.any { it.contains("tun added target-link-layer option to first NA") })
+        assertTrue("Must emit final summary on close after threads join", diagnostics.any { it.startsWith("ncm io final:") })
+
+        val finalSummary = diagnostics.single { it.startsWith("ncm io final:") }
+        assertTrue(finalSummary.contains("rxFrames=1"))
+        assertTrue(finalSummary.contains("ncmRxIcmp6_NS=1"))
+        assertTrue(finalSummary.contains("tunRxIcmp6_NA=1"))
+        assertTrue(finalSummary.contains("tunPatchedNA=1"))
+        assertTrue(finalSummary.contains("ncmTxCompleted=1"))
+        assertTrue(finalSummary.contains("ncmTxDroppedNotReady=0"))
     }
 
     @Test fun sendNotReadyAccuratelyReportsAttemptWithoutFalseCompletion() {
@@ -233,43 +245,42 @@ class Ipv6NcmBridgeDiagnosticTest {
 
         // Mock ncm.send returning false (not ready / bulkTransfer <= 0)
         val sendAttemptLatch = CountDownLatch(1)
-        `when`(mockNcm.send(any(), anyInt())).thenAnswer {
+        `when`(mockNcm.send(any(ByteArray::class.java) ?: byteArrayOf(), anyInt())).thenAnswer {
             sendAttemptLatch.countDown()
             false
         }
         `when`(mockNcm.recv(anyLong())).thenAnswer { Thread.sleep(20); null }
 
-        SocketPairFixture().use { fixture ->
-            val bridge = Ipv6NcmBridge(
-                ncm = mockNcm,
-                tun = fixture.tunPfd!!,
-                hostMac = dummyHostMac(),
-                onError = {},
-                onDiagnostic = { diagnostics.add(it) },
-            )
+        val tunIo = ControlledTunIo()
+        val bridge = Ipv6NcmBridge(
+            ncm = mockNcm,
+            tunAdapter = tunIo,
+            hostMac = dummyHostMac(),
+            onError = {},
+            onDiagnostic = { diagnostics.add(it) },
+        )
 
-            try {
-                bridge.start()
+        try {
+            bridge.start()
 
-                // Send multicast packet from TUN so it does not wait for peerMac
-                val testPacket = ByteArray(48)
-                testPacket[0] = 0x60
-                testPacket[6] = 6 // TCP
-                testPacket[24] = 0xff.toByte(); testPacket[25] = 0x02.toByte()
+            // Send multicast packet from TUN so it does not wait for peerMac
+            val testPacket = ByteArray(48)
+            testPacket[0] = 0x60
+            testPacket[6] = 6 // TCP
+            testPacket[24] = 0xff.toByte(); testPacket[25] = 0x02.toByte()
 
-                fixture.hostSide!!.getOutputStream().write(testPacket)
-                fixture.hostSide!!.getOutputStream().flush()
+            tunIo.inboundPackets.offer(testPacket)
 
-                assertTrue("Send attempt must occur", sendAttemptLatch.await(3, TimeUnit.SECONDS))
-            } finally {
-                bridge.close()
-            }
-
-            val finalSummary = diagnostics.single { it.startsWith("ncm io final:") }
-            assertTrue("Must record 1 attempted TX frame", finalSummary.contains("ncmTxAttempts=1"))
-            assertTrue("Must report 0 completed frames when send returned false", finalSummary.contains("ncmTxCompleted=0"))
-            assertTrue("Must report 1 dropped not ready", finalSummary.contains("ncmTxDroppedNotReady=1"))
+            assertTrue("Send attempt must occur", sendAttemptLatch.await(3, TimeUnit.SECONDS))
+        } finally {
+            bridge.close()
+            tunIo.close()
         }
+
+        val finalSummary = diagnostics.single { it.startsWith("ncm io final:") }
+        assertTrue("Must record 1 attempted TX frame", finalSummary.contains("ncmTxAttempts=1"))
+        assertTrue("Must report 0 completed frames when send returned false", finalSummary.contains("ncmTxCompleted=0"))
+        assertTrue("Must report 1 dropped not ready", finalSummary.contains("ncmTxDroppedNotReady=1"))
     }
 
     @Test fun diagnosticCallbackExceptionIsIsolatedAndNeverDisruptsForwarding() {
@@ -290,31 +301,32 @@ class Ipv6NcmBridgeDiagnosticTest {
 
         val exceptionThrown = AtomicInteger(0)
 
-        SocketPairFixture().use { fixture ->
-            val bridge = Ipv6NcmBridge(
-                ncm = mockNcm,
-                tun = fixture.tunPfd!!,
-                hostMac = dummyHostMac(),
-                onError = {},
-                onDiagnostic = {
-                    exceptionThrown.incrementAndGet()
-                    throw RuntimeException("Diagnostic error simulated")
-                },
-            )
+        val tunIo = ControlledTunIo()
+        val bridge = Ipv6NcmBridge(
+            ncm = mockNcm,
+            tunAdapter = tunIo,
+            hostMac = dummyHostMac(),
+            onError = {},
+            onDiagnostic = {
+                exceptionThrown.incrementAndGet()
+                throw RuntimeException("Diagnostic error simulated")
+            },
+        )
 
-            try {
-                bridge.start()
+        try {
+            bridge.start()
 
-                // Verify packet forwarding still succeeds despite diagnostic crash
-                assertTrue(ncmDeliveredLatch.await(3, TimeUnit.SECONDS))
-                val bytesRead = readFully(fixture.hostSide!!, 64)
-                val expectedIpv6Payload = nsFrame.copyOfRange(14, nsFrame.size)
+            // Verify packet forwarding still succeeds despite diagnostic crash
+            assertTrue(ncmDeliveredLatch.await(3, TimeUnit.SECONDS))
+            val bytesRead = tunIo.outboundPackets.poll(3, TimeUnit.SECONDS)
+            assertNotNull(bytesRead)
+            val expectedIpv6Payload = nsFrame.copyOfRange(14, nsFrame.size)
 
-                assertArrayEquals("Packet forwarding must succeed despite diagnostic exception", expectedIpv6Payload, bytesRead)
-                assertTrue("Diagnostic callback must have been executed and thrown", exceptionThrown.get() > 0)
-            } finally {
-                bridge.close()
-            }
+            assertArrayEquals("Packet forwarding must succeed despite diagnostic exception", expectedIpv6Payload, bytesRead)
+            assertTrue("Diagnostic callback must have been executed and thrown", exceptionThrown.get() > 0)
+        } finally {
+            bridge.close()
+            tunIo.close()
         }
     }
 
@@ -329,38 +341,42 @@ class Ipv6NcmBridgeDiagnosticTest {
         `when`(mockNcm.recv(anyLong())).thenAnswer {
             workerStartedLatch.countDown()
             try {
-                // Block worker past JOIN_TIMEOUT_MILLIS (2000ms), but wake on interrupt or release
-                workerReleaseLatch.await(3000, TimeUnit.MILLISECONDS)
-            } catch (_: InterruptedException) {
-                Thread.currentThread().interrupt()
+                // Keep worker alive until explicitly released by test (ignoring interrupts during join)
+                while (workerReleaseLatch.count > 0) {
+                    try {
+                        workerReleaseLatch.await(100, TimeUnit.MILLISECONDS)
+                    } catch (_: InterruptedException) {
+                        // Keep alive across join() interrupt until workerReleaseLatch is released
+                    }
+                }
             } finally {
                 workerExitedLatch.countDown()
             }
             null
         }
 
-        SocketPairFixture().use { fixture ->
-            val bridge = Ipv6NcmBridge(
-                ncm = mockNcm,
-                tun = fixture.tunPfd!!,
-                hostMac = dummyHostMac(),
-                onError = {},
-                onDiagnostic = { diagnostics.add(it) },
-            )
+        val tunIo = ControlledTunIo()
+        val bridge = Ipv6NcmBridge(
+            ncm = mockNcm,
+            tunAdapter = tunIo,
+            hostMac = dummyHostMac(),
+            onError = {},
+            onDiagnostic = { diagnostics.add(it) },
+        )
 
-            bridge.start()
-            assertTrue("Worker thread must enter recv", workerStartedLatch.await(3, TimeUnit.SECONDS))
+        bridge.start()
+        assertTrue("Worker thread must enter recv", workerStartedLatch.await(3, TimeUnit.SECONDS))
 
-            try {
-                bridge.close()
-                // bridge.close() waited 2000ms for ncmToTunThread, saw it still alive, and logged "closing (workers active)"
-                assertTrue("Must record closing (workers active) tag",
-                    diagnostics.any { it.startsWith("ncm io closing (workers active):") })
-            } finally {
-                // Release the worker and wait for it to cleanly terminate
-                workerReleaseLatch.countDown()
-                assertTrue("Worker thread must terminate cleanly", workerExitedLatch.await(2, TimeUnit.SECONDS))
-            }
+        try {
+            bridge.close()
+            // bridge.close() waited 2000ms for ncmToTunThread, saw it still alive, and logged "closing (workers active)"
+            assertTrue("Must record closing (workers active) tag",
+                diagnostics.any { it.startsWith("ncm io closing (workers active):") })
+        } finally {
+            // Release the worker and wait for it to cleanly terminate
+            workerReleaseLatch.countDown()
+            assertTrue("Worker thread must terminate cleanly", workerExitedLatch.await(2, TimeUnit.SECONDS))
+            tunIo.close()
         }
     }
 }

@@ -62,9 +62,16 @@ class WirelessStartupRecoveryTest {
 
     @Test fun exhaustedBudgetStopsAutomaticRecoveryAndExposesRetry() {
         repeat(6) { generation ->
-            ReflectionHelpers.setField(activity, "restartGeneration", generation)
-            ReflectionHelpers.setField(activity, "reconnectScheduled", false)
             report(generation)
+            if (generation < 5) {
+                // Execute the queued reconnect task and advance generation
+                val pending = ReflectionHelpers.getField<Any?>(activity, "pendingReconnect")
+                if (pending != null) {
+                    val runnable = ReflectionHelpers.getField<Runnable>(pending, "runnable")
+                    runnable.run()
+                }
+                ReflectionHelpers.setField(activity, "restartGeneration", generation + 1)
+            }
         }
         assertEquals(5, budget().retries)
         assertTrue(ReflectionHelpers.getField(activity, "startupRetryStopped"))

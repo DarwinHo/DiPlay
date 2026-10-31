@@ -8,6 +8,8 @@ import java.io.Closeable
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.IOException
+import java.io.InputStream
+import java.io.OutputStream
 import java.net.InetAddress
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
@@ -20,13 +22,34 @@ import java.util.concurrent.locks.LockSupport
  * restores the Ethernet II header. Link-local neighbor discovery stays in the Android kernel,
  * mirroring LIVI's reliance on the host kernel for NDP on its TAP interface.
  */
-class Ipv6NcmBridge(
+class Ipv6NcmBridge internal constructor(
     private val ncm: NcmUsbBridge,
-    private val tun: ParcelFileDescriptor,
+    private val tunAdapter: TunIoAdapter,
     private val hostMac: ByteArray,
     private val onError: (Throwable) -> Unit,
     private val onDiagnostic: (String) -> Unit = {},
 ) : Closeable {
+
+    constructor(
+        ncm: NcmUsbBridge,
+        tun: ParcelFileDescriptor,
+        hostMac: ByteArray,
+        onError: (Throwable) -> Unit,
+        onDiagnostic: (String) -> Unit = {},
+    ) : this(ncm, DefaultTunIoAdapter(tun), hostMac, onError, onDiagnostic)
+
+    internal interface TunIoAdapter : Closeable {
+        fun openInput(): InputStream
+        fun openOutput(): OutputStream
+        override fun close()
+    }
+
+    private class DefaultTunIoAdapter(private val pfd: ParcelFileDescriptor) : TunIoAdapter {
+        override fun openInput(): InputStream = FileInputStream(pfd.fileDescriptor)
+        override fun openOutput(): OutputStream = FileOutputStream(pfd.fileDescriptor)
+        override fun close() = pfd.close()
+    }
+
     init {
         require(hostMac.size == EthernetIpv6Codec.MAC_BYTES) { "hostMac must be 6 bytes" }
     }
@@ -109,7 +132,7 @@ class Ipv6NcmBridge(
     override fun close() {
         if (!running.compareAndSet(true, false)) return
         ncm.close()
-        tun.close()
+        tunAdapter.close()
         join(ncmToTunThread)
         join(tunToNcmThread)
         val workersStopped = !ncmToTunThread.isAlive && !tunToNcmThread.isAlive
@@ -118,7 +141,7 @@ class Ipv6NcmBridge(
     }
 
     private fun runNcmToTun() {
-        val output = FileOutputStream(tun.fileDescriptor)
+        val output = tunAdapter.openOutput()
         try {
             while (running.get()) {
                 ncmRxAttempts++
@@ -180,7 +203,7 @@ class Ipv6NcmBridge(
     }
 
     private fun runTunToNcm() {
-        val input = FileInputStream(tun.fileDescriptor)
+        val input = tunAdapter.openInput()
         val buffer = ByteArray(TUN_READ_BYTES)
         try {
             while (running.get()) {

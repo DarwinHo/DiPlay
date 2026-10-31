@@ -77,9 +77,15 @@ class CarPlayControllerTransitionTest {
 
     private fun mainLooper() = shadowOf(Looper.getMainLooper())
 
+    private val directExecutor = Executor { it.run() }
+    private val dummyTransitionCallback: (IphoneUsbHost.TransitionResult) -> Unit = {}
+    private fun <T> anyNonNull(fallback: T): T = any<T>() ?: fallback
+    private fun <T> eqNonNull(value: T): T = eq<T>(value) ?: value
+    private fun <T> captureNonNull(captor: ArgumentCaptor<T>, fallback: T): T = captor.capture() ?: fallback
+
     @Test fun duplicatePermissionTriggerDuringWaitingForReenumerationWindowIsSuppressed() {
         val dev1 = device("/dev/bus/usb/002/006")
-        `when`(mockHost.requestPermission(eq(dev1), anyBoolean()))
+        `when`(mockHost.requestPermission(eqNonNull(dev1), anyBoolean()))
             .thenReturn(IphoneUsbHost.PermissionRequest.AlreadyGranted(dev1))
 
         // 1. Initial permission request via real entrypoint
@@ -92,7 +98,7 @@ class CarPlayControllerTransitionTest {
 
         // Verify requestCarPlayReenumerationAsync was called once
         val captor = ArgumentCaptor.forClass(Function1::class.java as Class<Function1<IphoneUsbHost.TransitionResult, Unit>>)
-        verify(mockHost, times(1)).requestCarPlayReenumerationAsync(eq(dev1), any(Executor::class.java), captor.capture())
+        verify(mockHost, times(1)).requestCarPlayReenumerationAsync(eqNonNull(dev1), anyNonNull(directExecutor), captureNonNull(captor, dummyTransitionCallback))
         assertEquals(1, ReflectionHelpers.getField<Int>(controller, "reenumerationAttempts"))
 
         // 2. Callback returns ReenumerationRequested, entering the waiting-for-reenumeration window
@@ -111,14 +117,14 @@ class CarPlayControllerTransitionTest {
         mainLooper().idle()
 
         // Assert transition was NOT called a second time
-        verify(mockHost, times(1)).requestCarPlayReenumerationAsync(any(), any(), any())
+        verify(mockHost, times(1)).requestCarPlayReenumerationAsync(anyNonNull(dev1), anyNonNull(directExecutor), anyNonNull(dummyTransitionCallback))
         assertEquals("Transition count must remain 1 during waiting window",
             1, ReflectionHelpers.getField<Int>(controller, "reenumerationAttempts"))
     }
 
     @Test fun oldTransitionFailureArrivingLateAfterOpenDataPathsIsInvalidatedAndDoesNotFailSession() {
         val dev1 = device("/dev/bus/usb/002/006")
-        `when`(mockHost.requestPermission(eq(dev1), anyBoolean()))
+        `when`(mockHost.requestPermission(eqNonNull(dev1), anyBoolean()))
             .thenReturn(IphoneUsbHost.PermissionRequest.AlreadyGranted(dev1))
 
         // Start transition on dev1
@@ -130,7 +136,7 @@ class CarPlayControllerTransitionTest {
         mainLooper().idle()
 
         val captor = ArgumentCaptor.forClass(Function1::class.java as Class<Function1<IphoneUsbHost.TransitionResult, Unit>>)
-        verify(mockHost, times(1)).requestCarPlayReenumerationAsync(eq(dev1), any(Executor::class.java), captor.capture())
+        verify(mockHost, times(1)).requestCarPlayReenumerationAsync(eqNonNull(dev1), anyNonNull(directExecutor), captureNonNull(captor, dummyTransitionCallback))
         val callback1 = captor.value
 
         // Re-enumerated device dev2 arrives and enters data paths
@@ -160,7 +166,7 @@ class CarPlayControllerTransitionTest {
 
     @Test fun oldTransitionSuccessArrivingLateAfterOpenDataPathsDoesNotRevertPhase() {
         val dev1 = device("/dev/bus/usb/002/006")
-        `when`(mockHost.requestPermission(eq(dev1), anyBoolean()))
+        `when`(mockHost.requestPermission(eqNonNull(dev1), anyBoolean()))
             .thenReturn(IphoneUsbHost.PermissionRequest.AlreadyGranted(dev1))
 
         // Start transition on dev1
@@ -172,7 +178,7 @@ class CarPlayControllerTransitionTest {
         mainLooper().idle()
 
         val captor = ArgumentCaptor.forClass(Function1::class.java as Class<Function1<IphoneUsbHost.TransitionResult, Unit>>)
-        verify(mockHost, times(1)).requestCarPlayReenumerationAsync(eq(dev1), any(Executor::class.java), captor.capture())
+        verify(mockHost, times(1)).requestCarPlayReenumerationAsync(eqNonNull(dev1), anyNonNull(directExecutor), captureNonNull(captor, dummyTransitionCallback))
         val callback1 = captor.value
 
         // Re-enumerated device dev2 arrives and enters data paths
@@ -199,7 +205,7 @@ class CarPlayControllerTransitionTest {
     @Test fun reenumeratedDeviceWithNewNameIsAllowedToTransition() {
         val devOld = device("/dev/bus/usb/002/006")
         val devNew = device("/dev/bus/usb/002/007")
-        `when`(mockHost.requestPermission(any(), anyBoolean()))
+        `when`(mockHost.requestPermission(anyNonNull(devOld), anyBoolean()))
             .thenAnswer { invocation ->
                 IphoneUsbHost.PermissionRequest.AlreadyGranted(invocation.arguments[0] as UsbDevice)
             }
@@ -227,7 +233,7 @@ class CarPlayControllerTransitionTest {
 
     @Test fun failedTransitionClearsActiveTransitionToAllowRetry() {
         val dev1 = device("/dev/bus/usb/002/006")
-        `when`(mockHost.requestPermission(eq(dev1), anyBoolean()))
+        `when`(mockHost.requestPermission(eqNonNull(dev1), anyBoolean()))
             .thenReturn(IphoneUsbHost.PermissionRequest.AlreadyGranted(dev1))
 
         // Start transition
@@ -239,7 +245,7 @@ class CarPlayControllerTransitionTest {
         mainLooper().idle()
 
         val captor = ArgumentCaptor.forClass(Function1::class.java as Class<Function1<IphoneUsbHost.TransitionResult, Unit>>)
-        verify(mockHost, times(1)).requestCarPlayReenumerationAsync(eq(dev1), any(), captor.capture())
+        verify(mockHost, times(1)).requestCarPlayReenumerationAsync(eqNonNull(dev1), anyNonNull(directExecutor), captureNonNull(captor, dummyTransitionCallback))
 
         // Callback returns failure
         captor.value.invoke(IphoneUsbHost.TransitionResult.Failed(

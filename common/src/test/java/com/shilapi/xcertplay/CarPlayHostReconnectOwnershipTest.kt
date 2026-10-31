@@ -232,6 +232,9 @@ class CarPlayHostReconnectOwnershipTest {
         // Transition activity to generation 1
         ReflectionHelpers.callInstanceMethod<Unit>(activity, "restartCarPlay", from(String::class.java, "test bump"))
         drainTeardown()
+        mainLooper().idle()
+        assertFalse("handshakeResetInProgress must be cleared after teardown completes",
+            ReflectionHelpers.getField<Boolean>(activity, "handshakeResetInProgress"))
         val gen1 = ReflectionHelpers.getField<Int>(activity, "restartGeneration")
         assertEquals(gen0 + 1, gen1)
 
