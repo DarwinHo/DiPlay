@@ -139,8 +139,12 @@ sealed class CarPlayStatus {
     data object AttachingNetwork : CarPlayStatus()
     data object RunningControl : CarPlayStatus()
     data object ControlEnded : CarPlayStatus()
-    data class Failed(val message: String, val wifiResetRequired: Boolean = false,
-        val startupFailure: WirelessStartupFailure? = null) : CarPlayStatus()
+    data class Failed(
+        val message: String,
+        val wifiResetRequired: Boolean = false,
+        val startupFailure: WirelessStartupFailure? = null,
+        val earlyUsbFailure: Boolean = false,
+    ) : CarPlayStatus()
 }
 
 internal fun isWirelessHandoffInProgress(
@@ -208,10 +212,13 @@ class CarPlayController(
     private val hostId = UUID.randomUUID().toString().uppercase(Locale.US)
     private val systemBuid = UUID.randomUUID().toString().uppercase(Locale.US)
     private val lifecycleLock = Any()
+    private val transitionLock = Any()
     @Volatile private var uiListener: AirPlaySessionListener? = listener
     @Volatile private var uiStatusReporter: ((CarPlayStatus) -> Unit)? = reportStatus
     private val permissionGrant = AtomicBoolean(false)
     private val availabilityPollGeneration = AtomicInteger(0)
+    private var activeTransitionEnumeration: String? = null
+    private var transitionToken = 0L
     private var permissionPollGeneration = 0
     private var reenumerationAttempts = 0
     @Volatile private var wiredDeviceName: String? = null
@@ -677,6 +684,10 @@ class CarPlayController(
         com.shilapi.xcertplay.glance.CarPlayGlance.setConnected(false)
         BydNavigationOutputs.clearClusterStreamControl(::applyClusterUi)
         closeReceivers()
+        synchronized(transitionLock) {
+            activeTransitionEnumeration = null
+            transitionToken++
+        }
         availabilityPollGeneration.incrementAndGet()
         permissionPollGeneration += 1
         touchExecutor.shutdownNow()
@@ -1931,6 +1942,14 @@ class CarPlayController(
             when (val request = iphoneHost.requestPermission(device, allowAdbFallback)) {
                 is IphoneUsbHost.PermissionRequest.AlreadyGranted -> {
                     debugLog("wired iPhone USB permission already granted")
+                    val enumerationKey = "${request.device.deviceName}#${request.device.deviceId}"
+                    val transitioning = synchronized(transitionLock) {
+                        activeTransitionEnumeration == enumerationKey
+                    }
+                    if (transitioning) {
+                        debugLog("wired iPhone already transitioning on $enumerationKey; skipping duplicate permission dispatch")
+                        return
+                    }
                     permissionGrant.set(false)
                     onIphonePermission(IphoneUsbHost.PermissionResult.Granted(request.device))
                 }
@@ -2029,6 +2048,8 @@ class CarPlayController(
                                 IphoneUsbException.Protocol(
                                     "iPhone did not expose a complete CarPlay USB configuration",
                                 ),
+                                generation = null,
+                                earlyUsbFailure = true,
                             )
                         }
                     }
@@ -2037,7 +2058,7 @@ class CarPlayController(
             }
             is IphoneUsbHost.PermissionResult.Denied -> {
                 permissionGrant.set(true)
-                onStatus(CarPlayStatus.Failed("iPhone USB permission was denied"))
+                onStatus(CarPlayStatus.Failed("iPhone USB permission was denied", earlyUsbFailure = true))
             }
         }
     }
@@ -2078,24 +2099,39 @@ class CarPlayController(
 
     /** [fallbackAfterRejection]: the iPhone already offers USBMUX and NCM, so try that if it refuses. */
     private fun beginReenumeration(device: UsbDevice, fallbackAfterRejection: Boolean = false) {
+        val enumerationKey = "${device.deviceName}#${device.deviceId}"
+        val token = synchronized(transitionLock) {
+            if (activeTransitionEnumeration == enumerationKey) {
+                connectionDiagnostic("USB transition already active for $enumerationKey; skipping duplicate request")
+                return
+            }
+            activeTransitionEnumeration = enumerationKey
+            ++transitionToken
+        }
         phase = Phase.REENUMERATION
         reenumerationAttempts += 1
         connectionDiagnostic("USB transition requested count=$reenumerationAttempts")
         onStatus(CarPlayStatus.SelectingConfiguration)
         iphoneHost.requestCarPlayReenumerationAsync(device, executor) { transition ->
-            when (transition) {
-                IphoneUsbHost.TransitionResult.ReenumerationRequested ->
-                    onStatus(CarPlayStatus.WaitingForReenumeration)
-                is IphoneUsbHost.TransitionResult.Failed -> if (fallbackAfterRejection) {
-                    connectionDiagnostic(
-                        "USB transition rejected; using the configuration the iPhone offers " +
-                            "error=${transition.error.message}",
-                    )
-                    mainHandler.post {
-                        if (!closed && phase == Phase.REENUMERATION) openDataPaths(device)
+            mainHandler.post {
+                synchronized(transitionLock) {
+                    if (closed || token != transitionToken || phase != Phase.REENUMERATION) return@post
+                    when (transition) {
+                        IphoneUsbHost.TransitionResult.ReenumerationRequested ->
+                            onStatus(CarPlayStatus.WaitingForReenumeration)
+                        is IphoneUsbHost.TransitionResult.Failed -> {
+                            activeTransitionEnumeration = null
+                            if (fallbackAfterRejection) {
+                                connectionDiagnostic(
+                                    "USB transition rejected; using the configuration the iPhone offers " +
+                                        "error=${transition.error.message}",
+                                )
+                                if (!closed && phase == Phase.REENUMERATION) openDataPaths(device)
+                            } else {
+                                fail(transition.error, generation = null, earlyUsbFailure = true)
+                            }
+                        }
                     }
-                } else {
-                    fail(transition.error)
                 }
             }
         }
@@ -2128,6 +2164,10 @@ class CarPlayController(
     }
 
     private fun openDataPaths(device: UsbDevice) {
+        synchronized(transitionLock) {
+            activeTransitionEnumeration = null
+            transitionToken++
+        }
         phase = Phase.DATAPATHS
         wiredDeviceName = device.deviceName
         debugLog("wired opening iPhone USB data paths")
@@ -2917,6 +2957,10 @@ class CarPlayController(
     }
 
     private fun fail(error: Throwable, generation: Int? = null) {
+        fail(error, generation, earlyUsbFailure = false)
+    }
+
+    private fun fail(error: Throwable, generation: Int?, earlyUsbFailure: Boolean) {
         synchronized(wirelessResourceLock) {
             if (closed || generation != null && generation != wirelessGeneration.get()) return
             val wireless = config.transport == CarPlayTransport.WIRELESS
@@ -2927,7 +2971,8 @@ class CarPlayController(
             val causes = generateSequence(error) { it.cause }.toList()
             onStatus(CarPlayStatus.Failed(error.message ?: error.javaClass.simpleName,
                 causes.any { it is com.shilapi.xcertplay.network.P2pResetRequiredException },
-                causes.filterIsInstance<WirelessStartupException>().firstOrNull()?.reason),
+                causes.filterIsInstance<WirelessStartupException>().firstOrNull()?.reason,
+                earlyUsbFailure = earlyUsbFailure),
                 if (wireless) wirelessGeneration.get() else null)
         }
     }

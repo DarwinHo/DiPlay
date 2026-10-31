@@ -532,6 +532,24 @@ class CarPlayHostActivity : ComponentActivity() {
     private var startAfterHandshakeReset = false
     private var restartGeneration = 0
     private var reconnectScheduled = false
+    internal enum class ReconnectPurpose {
+        EARLY_USB_FAILURE,
+        GENERAL_FAILURE,
+        TRANSPORT_ERROR,
+        SESSION_ENDED,
+        STREAM_RECONFIGURATION,
+    }
+
+    private class PendingReconnect(
+        val taskId: Long,
+        var purpose: ReconnectPurpose,
+        val generation: Int,
+        var reason: String,
+        val runnable: Runnable,
+    )
+
+    private var pendingReconnect: PendingReconnect? = null
+    private var nextReconnectTaskId = 1L
     private var requestedSmallWindowForStream: Boolean? = null
     @Volatile private var adbNaviMode: com.shilapi.xcertplay.hud.BydClusterNaviMode? = null
     private var sessionLog: SessionLogFile? = null
@@ -1684,6 +1702,9 @@ class CarPlayHostActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        pendingReconnect?.let { mainHandler.removeCallbacks(it.runnable) }
+        pendingReconnect = null
+        reconnectScheduled = false
         discardLastPicture()
         if (pictureCopyThreadStarted) pictureCopyThread.quitSafely()
         resetSidePanel()
@@ -4982,6 +5003,7 @@ class CarPlayHostActivity : ComponentActivity() {
                     callPopupSessionReady = true
                     updateCallPopupGuard()
                     reconnectAttempts = 0
+                    cancelEarlyUsbReconnect(controllerGeneration, "AirPlay session active")
                     logThemeState(ThemeModeDiagnostics.Source.SESSION_ACTIVE, resources.configuration)
                     syncAirPlayDarkMode(ThemeModeDiagnostics.Source.SESSION_ACTIVE)
                     applyClusterTurnOverlay()
@@ -5031,7 +5053,7 @@ class CarPlayHostActivity : ComponentActivity() {
                     ClusterActivityOutput.setStreamActive(false)
                     setConnectionStage(R.string.carplay_session_ended_reconnecting)
                     appendLog("AirPlay session ended; reconnecting from scratch")
-                    reconnectAfterLoss("AirPlay session ended")
+                    reconnectAfterLoss("AirPlay session ended", purpose = ReconnectPurpose.SESSION_ENDED)
                 }
             }
 
@@ -5049,7 +5071,7 @@ class CarPlayHostActivity : ComponentActivity() {
                     ClusterActivityOutput.setStreamActive(false)
                     setConnectionStage(R.string.transport_error_reconnecting)
                     appendLog("CarPlay transport error: $message; reconnecting from scratch")
-                    reconnectAfterLoss("CarPlay transport error: $message")
+                    reconnectAfterLoss("CarPlay transport error: $message", purpose = ReconnectPurpose.TRANSPORT_ERROR)
                 }
             }
 
@@ -5103,7 +5125,13 @@ class CarPlayHostActivity : ComponentActivity() {
                     if (startupFailureGeneration == controllerGeneration) return@report
                     startupFailureGeneration = controllerGeneration
                 }
-                reconnectAfterLoss(description, status.startupFailure, englishDescription)
+                val purpose = if (status.earlyUsbFailure) ReconnectPurpose.EARLY_USB_FAILURE else ReconnectPurpose.GENERAL_FAILURE
+                reconnectAfterLoss(
+                    description,
+                    status.startupFailure,
+                    englishDescription,
+                    purpose = purpose,
+                )
             }
             else -> Unit
         }
@@ -5609,15 +5637,46 @@ class CarPlayHostActivity : ComponentActivity() {
         startCarPlay(size)
     }
 
+    private fun cancelEarlyUsbReconnect(
+        controllerGeneration: Int,
+        byReason: String,
+    ) {
+        val pending = pendingReconnect ?: return
+        if (pending.generation != controllerGeneration || pending.generation != restartGeneration) return
+        if (pending.purpose != ReconnectPurpose.EARLY_USB_FAILURE) return
+
+        mainHandler.removeCallbacks(pending.runnable)
+        pendingReconnect = null
+        reconnectScheduled = false
+        appendLog("reconnect timer cancelled: taskId=${pending.taskId} gen=${pending.generation} (was for '${pending.reason}') by='$byReason'")
+    }
+
     private fun reconnectAfterLoss(
         reason: String,
         startupFailure: WirelessStartupFailure? = null,
         englishReason: String = reason,
+        purpose: ReconnectPurpose = ReconnectPurpose.STREAM_RECONFIGURATION,
     ) {
         if (!CarPlayBackgroundSession.isOwner(this)) return
         if (menuOpen) recoveryPendingAfterMenu = true
         if (shuttingDown.get() || menuOpen || handshakeResetInProgress || startupRetryStopped) return
-        if (reconnectScheduled) return
+
+        val current = pendingReconnect
+        if (current != null) {
+            // If an un-cancelable failure or intent arrives while an early USB failure is pending,
+            // upgrade the pending task's purpose and reason so that subsequent progress cannot cancel it.
+            if (purpose != ReconnectPurpose.EARLY_USB_FAILURE && current.purpose == ReconnectPurpose.EARLY_USB_FAILURE) {
+                current.purpose = purpose
+                current.reason = reason
+                appendLog("reconnect timer upgraded from EARLY_USB_FAILURE to $purpose: reason='$reason'")
+            } else if (purpose == ReconnectPurpose.STREAM_RECONFIGURATION && current.purpose != ReconnectPurpose.STREAM_RECONFIGURATION) {
+                current.purpose = ReconnectPurpose.STREAM_RECONFIGURATION
+                current.reason = reason
+                appendLog("reconnect timer upgraded to STREAM_RECONFIGURATION: reason='$reason'")
+            }
+            return
+        }
+
         val startupDelay = if (startupFailure != null && startupFailure.retryable)
             startupRetryBudget.nextDelayMillis() else null
         if (startupFailure != null && startupDelay == null) {
@@ -5644,9 +5703,12 @@ class CarPlayHostActivity : ComponentActivity() {
             (RECONNECT_DELAY_MILLIS * (1L shl reconnectAttempts.coerceAtMost(4))).coerceAtMost(30_000L)
         }
         reconnectAttempts += 1
-        appendLog("$reason; retrying in ${delayMillis}ms generation=$generation startupFailure=$startupFailure startupRetries=${startupRetryBudget.retries}")
-        mainHandler.postDelayed(
-            {
+        val taskId = nextReconnectTaskId++
+        val task = object : Runnable {
+            override fun run() {
+                val p = pendingReconnect
+                if (p == null || p.taskId != taskId) return
+                pendingReconnect = null
                 reconnectScheduled = false
                 if (menuOpen && generation == restartGeneration) recoveryPendingAfterMenu = true
                 if (
@@ -5655,12 +5717,21 @@ class CarPlayHostActivity : ComponentActivity() {
                     handshakeResetInProgress || startupRetryStopped ||
                     generation != restartGeneration
                 ) {
-                    return@postDelayed
+                    return
                 }
-                restartCarPlay("Reconnecting after $reason")
-            },
-            delayMillis,
+                appendLog("reconnect timer fired taskId=$taskId generation=$generation purpose=${p.purpose} reason='${p.reason}'")
+                restartCarPlay("Reconnecting after ${p.reason}")
+            }
+        }
+        pendingReconnect = PendingReconnect(
+            taskId = taskId,
+            purpose = purpose,
+            generation = generation,
+            reason = reason,
+            runnable = task,
         )
+        appendLog("$reason; retrying in ${delayMillis}ms generation=$generation taskId=$taskId purpose=$purpose startupFailure=$startupFailure startupRetries=${startupRetryBudget.retries}")
+        mainHandler.postDelayed(task, delayMillis)
     }
 
     /** Full-stack fallback when an AirPlay-only reconnect is unavailable. */
@@ -5668,6 +5739,9 @@ class CarPlayHostActivity : ComponentActivity() {
         if (!CarPlayBackgroundSession.isOwner(this)) return
         if (shuttingDown.get() || menuOpen || handshakeResetInProgress) return
         val size = activeDisplaySize ?: return
+        pendingReconnect?.let { mainHandler.removeCallbacks(it.runnable) }
+        pendingReconnect = null
+        reconnectScheduled = false
         startupRetryBudget.disconnected()
         startupRetryButton?.visibility = View.GONE
         appendLog(reason)

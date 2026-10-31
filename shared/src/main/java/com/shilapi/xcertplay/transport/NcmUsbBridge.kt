@@ -69,8 +69,8 @@ class NcmUsbBridge internal constructor(
         }
     }
 
-    /** Wraps one Ethernet frame in one NTB16 block and writes it to bulk OUT. */
-    fun send(frame: ByteArray, timeoutMillis: Int) = synchronized(writeLock) {
+    /** Wraps one Ethernet frame in one NTB16 block and writes it to bulk OUT. Returns true if sent. */
+    fun send(frame: ByteArray, timeoutMillis: Int): Boolean = synchronized(writeLock) {
         checkOpen()
         require(timeoutMillis > 0) { "timeoutMillis must be positive" }
         val sequence = synchronized(stateLock) {
@@ -97,7 +97,7 @@ class NcmUsbBridge internal constructor(
                 loggedWriteTimeout = true
                 Log.i(IphoneCarPlayConfiguration.TAG, "ncm bulk-out not ready; retaining bridge for retry")
             }
-            return@synchronized
+            return@synchronized false
         }
         if (!bulkOutAccepted) {
             bulkOutAccepted = true
@@ -112,6 +112,7 @@ class NcmUsbBridge internal constructor(
             loggedWriteTimeout = false
             Log.i(IphoneCarPlayConfiguration.TAG, "ncm bulk-out became ready")
         }
+        return@synchronized true
     }
 
     /**
