@@ -1793,15 +1793,7 @@ class CarPlayHostActivity : ComponentActivity() {
         val retry = DiPlayButton(this).apply {
             text = getString(R.string.retry_carplay_connection)
             visibility = View.GONE
-            setOnClickListener {
-                if (!CarPlayBackgroundSession.isOwner(this@CarPlayHostActivity) ||
-                    shuttingDown.get() || menuOpen || handshakeResetInProgress) return@setOnClickListener
-                startupRetryBudget.manualRetry()
-                startupRetryStopped = false
-                reconnectAttempts = 0
-                visibility = View.GONE
-                restartCarPlay(getString(R.string.connecting_to_your_iphone))
-            }
+            setOnClickListener { performManualStartupRetry() }
             startupRetryButton = this
         }
         panel.addView(retry, LinearLayout.LayoutParams(dp(300), dp(64)).apply { bottomMargin = dp(12) })
@@ -5661,6 +5653,16 @@ class CarPlayHostActivity : ComponentActivity() {
             },
             delayMillis,
         )
+    }
+
+    internal fun performManualStartupRetry() {
+        if (!CarPlayBackgroundSession.isOwner(this) ||
+            shuttingDown.get() || menuOpen || handshakeResetInProgress) return
+        startupRetryBudget.manualRetry()
+        startupRetryStopped = false
+        reconnectAttempts = 0
+        startupRetryButton?.visibility = View.GONE
+        restartCarPlay(getString(R.string.connecting_to_your_iphone))
     }
 
     /** Full-stack fallback when an AirPlay-only reconnect is unavailable. */

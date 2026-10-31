@@ -864,6 +864,8 @@
     <string name="connection_help_bluetooth">Розблокуйте iPhone, увімкніть Bluetooth і Wi-Fi та створіть пару з головним пристроєм. Тримайте iPhone поряд і повторіть спробу.</string>
     <string name="connection_help_general">Спробуйте підключитися знову. Якщо не вдається, поверніться в DiPlay і збережіть звіт у розділі «Налаштування → Діагностика».</string>
     <string name="connection_help_wifi_direct">Тримайте Wi-Fi і Bluetooth головного пристрою ввімкненими, а iPhone розблокованим поряд, і повторіть спробу. Якщо збій повторюється, забудьте автомобіль на iPhone у розділі «Параметри → Загальні → CarPlay» і підключіться знову.</string>
+    <string name="connection_help_p2p_channel_unresponsive">Автомобільна система не відповіла на команду каналу Wi-Fi Direct. Повторіть спробу або скористайтеся дротовим підключенням USB, якщо система не підтримує Wi-Fi Direct.</string>
+    <string name="connection_help_p2p_unsupported">Автомобільна система повідомила, що Wi-Fi Direct не підтримується. Підключіться за допомогою дротового з\'єднання USB.</string>
     <string name="connection_help_existing_wifi">Переконайтеся, що головний пристрій та iPhone підключені до однієї мережі Wi-Fi, а її назва й пароль збігаються з налаштуваннями DiPlay, і повторіть спробу.</string>
     <string name="settings_report_on_phone">Отримати звіт на телефоні</string>
     <string name="settings_report_on_phone_hint">Відскануйте код камерою телефона, щоб відкрити сторінку в його браузері, і виберіть «Завантажити звіт». Не закривайте цей екран, доки завантаження не завершиться.</string>

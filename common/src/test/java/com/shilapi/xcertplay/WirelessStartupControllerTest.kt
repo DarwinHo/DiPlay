@@ -93,6 +93,20 @@ class WirelessStartupControllerTest {
         return constructor.newInstance(address, name, handler, localAddress)
     }
 
+    private fun createLegacyChannelOutcomeUnknown(message: String, cause: Throwable? = null): Throwable {
+        val targetClass = Class.forName("com.shilapi.xcertplay.network.LegacyChannelOutcomeUnknown")
+        val constructor = targetClass.getDeclaredConstructor(String::class.java, Throwable::class.java)
+            .apply { isAccessible = true }
+        return constructor.newInstance(message, cause) as Throwable
+    }
+
+    private fun createP2pCreateRejected(reason: Int, message: String): Throwable {
+        val targetClass = Class.forName("com.shilapi.xcertplay.network.P2pCreateRejected")
+        val constructor = targetClass.getDeclaredConstructor(Int::class.javaPrimitiveType, String::class.java)
+            .apply { isAccessible = true }
+        return constructor.newInstance(reason, message) as Throwable
+    }
+
     private fun fail(controller: CarPlayController, generation: Int, error: Throwable) {
         controller.javaClass.getDeclaredMethod("fail", Throwable::class.java, Int::class.javaObjectType)
             .apply { isAccessible = true }.invoke(controller, error, generation)
@@ -228,6 +242,100 @@ class WirelessStartupControllerTest {
                 "Must not silently fall back to standard Bluetooth radio message",
                 failure.message.contains(BluetoothRadioCheck.RADIO_OFF_MARK),
             )
+        } finally {
+            controller.close()
+            controller.awaitClosed(2_000)
+        }
+    }
+
+    @Test fun p2pChannelTimeoutFailureClassifiesAsUnresponsive() {
+        val controller = controller()
+        try {
+            val nested = IOException("Could not establish WIFI_P2P hotspot: timeout",
+                createLegacyChannelOutcomeUnknown("Wi-Fi Direct channel selection did not respond"))
+            fail(controller, 0, nested)
+            shadowOf(Looper.getMainLooper()).idle()
+            assertEquals(1, statuses.size)
+            val failure = statuses.single() as CarPlayStatus.Failed
+            assertEquals(WirelessStartupFailure.P2P_CHANNEL_UNRESPONSIVE, failure.startupFailure)
+        } finally { controller.close(); controller.awaitClosed(2_000) }
+    }
+
+    @Test fun p2pUnsupportedFailureClassifiesAsP2pUnsupported() {
+        val controller = controller()
+        try {
+            val nested = IOException("Could not establish WIFI_P2P hotspot: createGroup rejected",
+                createP2pCreateRejected(android.net.wifi.p2p.WifiP2pManager.P2P_UNSUPPORTED, "Wi-Fi P2P createGroup failed: P2P_UNSUPPORTED (code=1)"))
+            fail(controller, 0, nested)
+            shadowOf(Looper.getMainLooper()).idle()
+            assertEquals(1, statuses.size)
+            val failure = statuses.single() as CarPlayStatus.Failed
+            assertEquals(WirelessStartupFailure.P2P_UNSUPPORTED, failure.startupFailure)
+        } finally { controller.close(); controller.awaitClosed(2_000) }
+    }
+
+    @Test fun p2pBusyFailureLeavesStartupFailureNull() {
+        val controller = controller()
+        try {
+            val nested = IOException("Could not establish WIFI_P2P hotspot: createGroup busy",
+                createP2pCreateRejected(android.net.wifi.p2p.WifiP2pManager.BUSY, "Wi-Fi P2P createGroup failed: BUSY (code=2)"))
+            fail(controller, 0, nested)
+            shadowOf(Looper.getMainLooper()).idle()
+            assertEquals(1, statuses.size)
+            val failure = statuses.single() as CarPlayStatus.Failed
+            assertNull("BUSY should not be classified as P2P_UNSUPPORTED", failure.startupFailure)
+        } finally { controller.close(); controller.awaitClosed(2_000) }
+    }
+
+    @Test fun realHotspotStartupThrowsLegacyChannelOutcomeUnknownAndClassifiesCorrectly() {
+        val controller = controller(pioneerBluetooth = true)
+        val target = createPioneerTarget()
+        ReflectionHelpers.setField(controller, "pioneerTargetSelector", { _: String? -> target })
+        val mockHotspot = object : WirelessHotspotManager {
+            override fun start(timeoutMillis: Long): WirelessHotspotInfo {
+                throw createLegacyChannelOutcomeUnknown("Wi-Fi Direct channel selection did not respond")
+            }
+            override fun close() = Unit
+        }
+        ReflectionHelpers.setField(controller, "hotspotManagerFactory", { _: WirelessHotspotMode, _: Int ->
+            mockHotspot
+        })
+        try {
+            invokeRunWireless(controller)
+            val failures = statuses.filterIsInstance<CarPlayStatus.Failed>()
+            assertEquals("Expected exactly one failure reported", 1, failures.size)
+            val failure = failures.single()
+            assertEquals(WirelessStartupFailure.P2P_CHANNEL_UNRESPONSIVE, failure.startupFailure)
+            assertTrue("Message must preserve technical diagnostic",
+                failure.message.contains("Wi-Fi Direct channel selection did not respond"))
+        } finally {
+            controller.close()
+            controller.awaitClosed(2_000)
+        }
+    }
+
+    @Test fun realHotspotStartupThrowsP2pUnsupportedAndClassifiesCorrectly() {
+        val controller = controller(pioneerBluetooth = true)
+        val target = createPioneerTarget()
+        ReflectionHelpers.setField(controller, "pioneerTargetSelector", { _: String? -> target })
+        val mockHotspot = object : WirelessHotspotManager {
+            override fun start(timeoutMillis: Long): WirelessHotspotInfo {
+                throw createP2pCreateRejected(android.net.wifi.p2p.WifiP2pManager.P2P_UNSUPPORTED,
+                    "Wi-Fi P2P createGroup failed: P2P_UNSUPPORTED (code=1)")
+            }
+            override fun close() = Unit
+        }
+        ReflectionHelpers.setField(controller, "hotspotManagerFactory", { _: WirelessHotspotMode, _: Int ->
+            mockHotspot
+        })
+        try {
+            invokeRunWireless(controller)
+            val failures = statuses.filterIsInstance<CarPlayStatus.Failed>()
+            assertEquals("Expected exactly one failure reported", 1, failures.size)
+            val failure = failures.single()
+            assertEquals(WirelessStartupFailure.P2P_UNSUPPORTED, failure.startupFailure)
+            assertTrue("Message must preserve technical diagnostic",
+                failure.message.contains("P2P_UNSUPPORTED"))
         } finally {
             controller.close()
             controller.awaitClosed(2_000)
